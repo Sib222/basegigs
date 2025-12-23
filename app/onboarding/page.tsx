@@ -45,6 +45,22 @@ const EDUCATION_LEVELS = [
   'Doctorate'
 ]
 
+const LANGUAGES = [
+  'English', 'Afrikaans', 'Zulu', 'Xhosa', 'Sotho', 'Tswana',
+  'Pedi', 'Venda', 'Tsonga', 'Swati', 'Ndebele'
+]
+
+const AVAILABILITY_OPTIONS = [
+  'Full-time', 'Part-time', 'Weekends Only', 'Flexible', 'Contract Basis'
+]
+
+const TRAVEL_DISTANCES = [
+  'Within my city only',
+  'Within my province',
+  'Nationwide',
+  'Not willing to travel'
+]
+
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -69,6 +85,12 @@ export default function OnboardingPage() {
   const [gigServices, setGigServices] = useState<string[]>([])
   const [educationLevel, setEducationLevel] = useState('')
   const [experience, setExperience] = useState('')
+  const [availability, setAvailability] = useState('')
+  const [expectedRate, setExpectedRate] = useState('')
+  const [yearsExperience, setYearsExperience] = useState('')
+  const [languages, setLanguages] = useState<string[]>([])
+  const [travelDistance, setTravelDistance] = useState('')
+  const [portfolioUrl, setPortfolioUrl] = useState('')
 
   useEffect(() => {
     checkUser()
@@ -109,6 +131,14 @@ export default function OnboardingPage() {
       setGigServices(gigServices.filter(s => s !== service))
     } else {
       setGigServices([...gigServices, service])
+    }
+  }
+
+  const toggleLanguage = (language: string) => {
+    if (languages.includes(language)) {
+      setLanguages(languages.filter(l => l !== language))
+    } else {
+      setLanguages([...languages, language])
     }
   }
 
@@ -157,7 +187,13 @@ export default function OnboardingPage() {
             education_level: educationLevel,
             experience,
             documents: [],
-            verified: false
+            verified: false,
+            availability,
+            expected_hourly_rate: expectedRate ? parseInt(expectedRate) : null,
+            years_of_experience: yearsExperience ? parseInt(yearsExperience) : null,
+            languages,
+            travel_distance: travelDistance,
+            portfolio_url: portfolioUrl || null
           })
         if (seekerError) throw seekerError
       }
@@ -336,7 +372,7 @@ export default function OnboardingPage() {
       if (userType === 'gig_seeker') {
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Additional Details</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Professional Details</h2>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Highest Level of Education *</label>
               <select value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
@@ -345,11 +381,19 @@ export default function OnboardingPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
+              <input type="number" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="e.g., 3" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Experience Description</label>
               <textarea value={experience} onChange={(e) => setExperience(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="Describe your experience..." />
             </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-green-800 font-semibold">Thanks for filling the form!</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+              <select value={availability} onChange={(e) => setAvailability(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                <option value="">Select availability</option>
+                {AVAILABILITY_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+              </select>
             </div>
           </div>
         )
@@ -379,20 +423,106 @@ export default function OnboardingPage() {
       }
     }
 
-    if (step === 6 && userType === 'both') {
+    if (step === 6) {
+      if (userType === 'gig_seeker') {
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">Additional Information</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Expected Hourly Rate (ZAR) - Optional</label>
+              <input type="number" value={expectedRate} onChange={(e) => setExpectedRate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="e.g., 150" />
+              <p className="text-sm text-gray-500 mt-1">Leave blank if negotiable</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Languages Spoken</label>
+              <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                {LANGUAGES.map(lang => (
+                  <label key={lang} className="flex items-center">
+                    <input type="checkbox" checked={languages.includes(lang)} onChange={() => toggleLanguage(lang)} className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+                    <span className="ml-2 text-sm">{lang}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Willing to Travel?</label>
+              <select value={travelDistance} onChange={(e) => setTravelDistance(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                <option value="">Select option</option>
+                {TRAVEL_DISTANCES.map(dist => (<option key={dist} value={dist}>{dist}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio URL - Optional</label>
+              <input type="url" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="https://yourportfolio.com" />
+              <p className="text-sm text-gray-500 mt-1">Link to your website, Instagram, or portfolio</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-green-800 font-semibold">Thanks for filling the form!</p>
+            </div>
+          </div>
+        )
+      }
+
+      if (userType === 'both') {
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">Professional Details</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Highest Level of Education *</label>
+              <select value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                <option value="">Select education level</option>
+                {EDUCATION_LEVELS.map(level => (<option key={level} value={level}>{level}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
+              <input type="number" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Experience Description</label>
+              <textarea value={experience} onChange={(e) => setExperience(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+              <select value={availability} onChange={(e) => setAvailability(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                <option value="">Select availability</option>
+                {AVAILABILITY_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+              </select>
+            </div>
+          </div>
+        )
+      }
+    }
+
+    if (step === 7 && userType === 'both') {
       return (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-gray-900">Final Details</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Highest Level of Education *</label>
-            <select value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-              <option value="">Select education level</option>
-              {EDUCATION_LEVELS.map(level => (<option key={level} value={level}>{level}</option>))}
+            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Hourly Rate (ZAR) - Optional</label>
+            <input type="number" value={expectedRate} onChange={(e) => setExpectedRate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="e.g., 150" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Languages Spoken</label>
+            <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+              {LANGUAGES.map(lang => (
+                <label key={lang} className="flex items-center">
+                  <input type="checkbox" checked={languages.includes(lang)} onChange={() => toggleLanguage(lang)} className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+                  <span className="ml-2 text-sm">{lang}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Willing to Travel?</label>
+            <select value={travelDistance} onChange={(e) => setTravelDistance(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+              <option value="">Select option</option>
+              {TRAVEL_DISTANCES.map(dist => (<option key={dist} value={dist}>{dist}</option>))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
-            <textarea value={experience} onChange={(e) => setExperience(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio URL - Optional</label>
+            <input type="url" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="https://yourportfolio.com" />
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
             <p className="text-green-800 font-semibold">Thanks for filling the form!</p>
@@ -404,7 +534,7 @@ export default function OnboardingPage() {
     return null
   }
 
-  const totalSteps = userType === 'client' ? 4 : userType === 'gig_seeker' ? 5 : userType === 'both' ? 6 : 3
+  const totalSteps = userType === 'client' ? 4 : userType === 'gig_seeker' ? 6 : userType === 'both' ? 7 : 3
   const isLastStep = step === totalSteps
 
   return (
@@ -417,26 +547,4 @@ export default function OnboardingPage() {
               <span>{Math.round((step / totalSteps) * 100)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${(step / totalSteps) * 100}%` }} />
-            </div>
-          </div>
-
-          {renderStep()}
-
-          <div className="mt-8 flex justify-between">
-            {step > 1 && (<button onClick={handleBack} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back</button>)}
-            <div className="ml-auto">
-              {!isLastStep ? (
-                <button onClick={handleNext} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600">Next</button>
-              ) : (
-                <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
-                  {loading ? 'Submitting...' : 'Submit'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+              <div className="bg-primary
