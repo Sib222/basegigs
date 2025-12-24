@@ -27,27 +27,32 @@ export default function LoginPage() {
 
       if (data.user) {
         // Check if user has completed onboarding
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', data.user.id)
           .single()
 
-        if (!profile) {
-          // New user - redirect to onboarding
+        if (profileError || !profile) {
+          // New user or profile doesn't exist - redirect to onboarding
           router.push('/onboarding')
+          return
+        }
+
+        // Existing user - redirect based on user type
+        if (profile.user_type === 'client') {
+          router.push('/dashboard/client')
+        } else if (profile.user_type === 'gig_seeker') {
+          router.push('/dashboard/gig-seeker')
+        } else if (profile.user_type === 'both') {
+          router.push('/dashboard/both')
         } else {
-          // Existing user - redirect based on user type
-          if (profile.user_type === 'client') {
-            router.push('/dashboard/client')
-          } else if (profile.user_type === 'gig_seeker') {
-            router.push('/dashboard/gig-seeker')
-          } else if (profile.user_type === 'both') {
-            router.push('/dashboard/both')
-          }
+          // Fallback if user_type is somehow invalid
+          router.push('/onboarding')
         }
       }
     } catch (error: any) {
+      console.error('Login error:', error)
       setError(error.message || 'Invalid email or password')
     } finally {
       setLoading(false)
@@ -65,7 +70,7 @@ export default function LoginPage() {
           Sign in to your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/signup" className="font-medium text-primary hover:text-green-600">
             Sign up for free
           </Link>
