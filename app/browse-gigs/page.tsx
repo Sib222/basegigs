@@ -28,8 +28,9 @@ const [gigs, setGigs] = useState<Gig[]>([])
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
 const [userType, setUserType] = useState<string | null>(null)
+const [appliedGigs, setAppliedGigs] = useState<number[]>([])
+const [applyingTo, setApplyingTo] = useState<number | null>(null)
 
-// Filters
 const [searchTerm, setSearchTerm] = useState('')
 const [selectedType, setSelectedType] = useState('All Types')
 const [selectedProvince, setSelectedProvince] = useState('All Provinces')
@@ -96,6 +97,16 @@ const { data: profile } = await supabase
 .eq('user_id', user.id)
 .single()
 setUserType(profile?.user_type || null)
+
+// Fetch user's existing applications
+const { data: applications } = await supabase
+.from('applications')
+.select('gig_id')
+.eq('gig_seeker_id', user.id)
+
+if (applications) {
+setAppliedGigs(applications.map(app => app.gig_id))
+}
 }
 }
 
@@ -116,10 +127,63 @@ setLoading(false)
 }
 }
 
+const handleApply = async (gig: Gig) => {
+if (!currentUser) {
+alert('Please log in to apply for gigs')
+return
+}
+
+if (appliedGigs.includes(gig.id)) {
+alert('You have already applied to this gig')
+return
+}
+
+setApplyingTo(gig.id)
+
+try {
+// Create application
+const { error: appError } = await supabase
+.from('applications')
+.insert({
+gig_id: gig.id,
+gig_seeker_id: currentUser.id,
+client_id: gig.client_id,
+status: 'pending'
+})
+
+if (appError) throw appError
+
+// Update gig applicant count
+const { error: gigError } = await supabase
+.from('gigs')
+.update({
+applicant_count: gig.applicant_count + 1,
+status: gig.applicant_count + 1 >= 10 ? 'full' : 'open'
+})
+.eq('id', gig.id)
+
+if (gigError) throw gigError
+
+// Update local state
+setAppliedGigs([...appliedGigs, gig.id])
+setGigs(gigs.map(g =>
+g.id === gig.id
+? { ...g, applicant_count: g.applicant_count + 1, status: g.applicant_count + 1 >= 10 ? 'full' : 'open' }
+: g
+))
+
+alert('Application submitted successfully! The client will review your profile.')
+} catch (error: any) {
+console.error('Error applying:', error)
+alert('Failed to submit application: ' + error.message)
+} finally {
+setApplyingTo(null)
+}
+}
+
 const filterGigs = () => {
 let filtered = gigs
 
-// Search filter
 if (searchTerm) {
 filtered = filtered.filter(gig =>
 gig.gig_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,17 +192,14 @@ gig.city.toLowerCase().includes(searchTerm.toLowerCase())
 )
 }
 
-// Type filter
 if (selectedType !== 'All Types') {
 filtered = filtered.filter(gig => gig.gig_type === selectedType)
 }
 
-// Province filter
 if (selectedProvince !== 'All Provinces') {
 filtered = filtered.filter(gig => gig.province === selectedProvince)
 }
 
-// Budget filter
 if (selectedBudget !== 'Any Budget') {
 filtered = filtered.filter(gig => {
 const amount = gig.payment_amount
@@ -167,7 +228,6 @@ return `${Math.floor(diffDays / 30)} months ago`
 }
 
 const canApply = userType === 'gig_seeker' || userType === 'both'
-
 const filteredGigs = filterGigs()
 
 if (loading) {
@@ -180,7 +240,6 @@ return (
 
 return (
 <div className="min-h-screen bg-gray-50">
-{/* Navigation */}
 <nav className="bg-white shadow-sm">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
@@ -209,7 +268,6 @@ Dashboard
 </div>
 </nav>
 
-{/* Header */}
 <div className="bg-white border-b">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 <h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Gigs</h1>
@@ -217,7 +275,6 @@ Dashboard
 </div>
 </div>
 
-{/* Filters */}
 <div className="bg-white border-b">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -259,7 +316,6 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 </div>
 </div>
 
-{/* Gigs List */}
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 {filteredGigs.length === 0 ? (
 <div className="text-center py-12">
@@ -308,13 +364,21 @@ R{gig.payment_amount.toLocaleString()} ({gig.payment_type})
 {getTimeAgo(gig.created_at)} • {gig.applicant_count} applicants
 </div>
 {canApply ? (
-gig.applicant_count >= 10 ? (
+appliedGigs.includes(gig.id) ? (
+<button disabled className="px-6 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed">
+Applied ✓
+</button>
+) : gig.status === 'full' || gig.applicant_count >= 10 ? (
 <button disabled className="px-6 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed">
 Currently Full
 </button>
 ) : (
-<button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600">
-Apply
+<button
+onClick={() => handleApply(gig)}
+disabled={applyingTo === gig.id}
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+>
+{applyingTo === gig.id ? 'Applying...' : 'Apply'}
 </button>
 )
 ) : (
