@@ -79,16 +79,46 @@ try {
 const { data, error } = await supabase
 .from('applications')
 .select(`
-*,
-gigs!inner(gig_name, gig_type, payment_amount, client_id),
-profiles!applications_gig_seeker_id_fkey(full_name, age, gender, city, province, phone_number, email, has_car),
-gig_seeker_profiles!gig_seeker_profiles_user_id_fkey(background_story, gig_services, education_level, experience, years_of_experience, availability, expected_hourly_rate, languages, travel_distance, portfolio_url)
+id,
+gig_id,
+gig_seeker_id,
+status,
+applied_at,
+gigs (
+gig_name,
+gig_type,
+payment_amount
+)
 `)
-.eq('gigs.client_id', userId)
+.eq('client_id', userId)
 .order('applied_at', { ascending: false })
 
 if (error) throw error
-setApplications(data || [])
+
+// Fetch gig seeker details separately for each application
+const enrichedData = await Promise.all(
+(data || []).map(async (app) => {
+const { data: profile } = await supabase
+.from('profiles')
+.select('*')
+.eq('user_id', app.gig_seeker_id)
+.single()
+
+const { data: seekerProfile } = await supabase
+.from('gig_seeker_profiles')
+.select('*')
+.eq('user_id', app.gig_seeker_id)
+.single()
+
+return {
+...app,
+profiles: profile,
+gig_seeker_profiles: seekerProfile
+}
+})
+)
+
+setApplications(enrichedData as any)
 } catch (error: any) {
 console.error('Error fetching applications:', error)
 alert('Error loading applications: ' + error.message)
@@ -215,10 +245,10 @@ Go to Dashboard
 <div key={app.id} className="bg-white rounded-lg shadow-md p-6">
 <div className="flex justify-between items-start mb-4">
 <div>
-<div className="text-sm text-gray-500 mb-1">Applied to: {app.gigs.gig_name}</div>
-<h2 className="text-2xl font-bold text-gray-900">{app.profiles.full_name}</h2>
+<div className="text-sm text-gray-500 mb-1">Applied to: {app.gigs?.gig_name || 'Unknown Gig'}</div>
+<h2 className="text-2xl font-bold text-gray-900">{app.profiles?.full_name || 'Unknown'}</h2>
 <div className="text-sm text-gray-600 mt-1">
-{app.profiles.age} years old • {app.profiles.gender} • {app.profiles.city}, {app.profiles.province}
+{app.profiles?.age} years old • {app.profiles?.gender} • {app.profiles?.city}, {app.profiles?.province}
 </div>
 </div>
 <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
@@ -233,9 +263,9 @@ app.status === 'accepted' ? 'bg-green-100 text-green-800' :
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h3 className="font-semibold text-gray-900 mb-2">Contact:</h3>
-<p className="text-gray-600">📞 {app.profiles.phone_number}</p>
-{app.profiles.email && <p className="text-gray-600">📧 {app.profiles.email}</p>}
-<p className="text-gray-600 mt-2">🚗 {app.profiles.has_car ? 'Has a car' : 'No car'}</p>
+<p className="text-gray-600">📞 {app.profiles?.phone_number}</p>
+{app.profiles?.email && <p className="text-gray-600">📧 {app.profiles.email}</p>}
+<p className="text-gray-600 mt-2">🚗 {app.profiles?.has_car ? 'Has a car' : 'No car'}</p>
 </div>
 
 <div>
