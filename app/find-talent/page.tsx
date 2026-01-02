@@ -6,21 +6,14 @@ import Link from 'next/link'
 
 interface GigSeeker {
 user_id: string
-profiles: {
-full_name: string
-age: number
-gender: string
-city: string
-province: string
-has_car: boolean
-}
-background_story: string
-gig_services: string[]
-education_level: string
-experience: string
-years_of_experience: number
-availability: string
-expected_hourly_rate: number
+profiles: any
+background_story: string | null
+gig_services: string[] | null
+education_level: string | null
+experience: string | null
+years_of_experience: number | null
+availability: string | null
+expected_hourly_rate: number | null
 verified: boolean
 }
 
@@ -102,21 +95,29 @@ experience,
 years_of_experience,
 availability,
 expected_hourly_rate,
-verified,
-profiles!gig_seeker_profiles_user_id_fkey (
-full_name,
-age,
-gender,
-city,
-province,
-has_car
-)
+verified
 `)
 .eq('verified', true)
 .order('user_id', { ascending: false })
 
 if (error) throw error
-setSeekers(data || [])
+
+const enrichedData = await Promise.all(
+(data || []).map(async (seeker) => {
+const { data: profile } = await supabase
+.from('profiles')
+.select('full_name, age, gender, city, province, has_car')
+.eq('user_id', seeker.user_id)
+.single()
+
+return {
+...seeker,
+profiles: profile
+}
+})
+)
+
+setSeekers(enrichedData as any)
 } catch (error) {
 console.error('Error fetching seekers:', error)
 } finally {
@@ -129,9 +130,9 @@ let filtered = seekers
 
 if (searchTerm) {
 filtered = filtered.filter(seeker =>
-seeker.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+seeker.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 seeker.background_story?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-seeker.profiles?.city.toLowerCase().includes(searchTerm.toLowerCase())
+seeker.profiles?.city?.toLowerCase().includes(searchTerm.toLowerCase())
 )
 }
 
@@ -272,9 +273,9 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 {service}
 </span>
 ))}
-{seeker.gig_services?.length > 3 && (
+{(seeker.gig_services?.length || 0) > 3 && (
 <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-+{seeker.gig_services.length - 3} more
++{(seeker.gig_services?.length || 0) - 3} more
 </span>
 )}
 </div>
