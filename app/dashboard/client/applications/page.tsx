@@ -95,7 +95,6 @@ payment_amount
 
 if (error) throw error
 
-// Fetch gig seeker details separately for each application
 const enrichedData = await Promise.all(
 (data || []).map(async (app) => {
 const { data: profile } = await supabase
@@ -348,9 +347,9 @@ Decline
 
 {app.status === 'accepted' && (
 <div className="pt-4 border-t">
-<button className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold">
-Open Chat (Coming Soon)
-</button>
+<Link href={`/chat/${app.id}`} className="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold text-center">
+Open Chat 💬
+</Link>
 </div>
 )}
 
