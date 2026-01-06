@@ -8,10 +8,10 @@ import Link from 'next/link'
 export default function ContractPage({ params }: { params: { applicationId: string } }) {
 const router = useRouter()
 const [loading, setLoading] = useState(true)
+const [signing, setSigning] = useState(false)
 const [currentUser, setCurrentUser] = useState<any>(null)
 const [contractData, setContractData] = useState<any>(null)
-const [clientSigned, setClientSigned] = useState(false)
-const [seekerSigned, setSeekerSigned] = useState(false)
+const [contract, setContract] = useState<any>(null)
 
 const applicationId = parseInt(params.applicationId)
 
@@ -33,7 +33,8 @@ await fetchContractData(user.id)
 
 const fetchContractData = async (userId: string) => {
 try {
-const { data: application, error } = await supabase
+// Fetch application data
+const { data: application, error: appError } = await supabase
 .from('applications')
 .select(`
 id,
@@ -46,21 +47,52 @@ client_profiles:profiles!applications_client_id_fkey (full_name, phone_number, e
 .eq('id', applicationId)
 .single()
 
-if (error) throw error
+if (appError) throw appError
 
 if (!application) {
 alert('Application not found')
-router.push('/dashboard/client')
+router.push('/dashboard')
 return
 }
 
+// Check access
 if (application.client_id !== userId && application.gig_seeker_id !== userId) {
 alert('You do not have access to this contract')
-router.push('/dashboard/client')
+router.push('/dashboard')
 return
 }
 
 setContractData(application)
+
+// Check if contract exists, if not create it
+const { data: existingContract, error: contractError } = await supabase
+.from('contracts')
+.select('*')
+.eq('application_id', applicationId)
+.single()
+
+if (contractError && contractError.code !== 'PGRST116') {
+throw contractError
+}
+
+if (existingContract) {
+setContract(existingContract)
+} else {
+// Create new contract
+const { data: newContract, error: createError } = await supabase
+.from('contracts')
+.insert({
+application_id: applicationId,
+client_id: application.client_id,
+gig_seeker_id: application.gig_seeker_id
+})
+.select()
+.single()
+
+if (createError) throw createError
+setContract(newContract)
+}
+
 } catch (error: any) {
 console.error('Error fetching contract data:', error)
 alert('Error loading contract: ' + error.message)
@@ -70,25 +102,49 @@ setLoading(false)
 }
 
 const handleSign = async () => {
-if (!currentUser || !contractData) return
+if (!currentUser || !contractData || !contract || signing) return
 
+setSigning(true)
 const isClient = currentUser.id === contractData.client_id
 
 try {
+const updateData: any = {}
+const now = new Date().toISOString()
+
 if (isClient) {
-setClientSigned(true)
-alert('Contract signed by client! Waiting for gig seeker signature.')
+updateData.client_signed_at = now
 } else {
-setSeekerSigned(true)
-alert('Contract signed by gig seeker! Waiting for client signature.')
+updateData.seeker_signed_at = now
 }
 
-if ((isClient && seekerSigned) || (!isClient && clientSigned)) {
-alert('🎉 Contract fully signed by both parties! You can now proceed with the work.')
+// Check if both will be signed after this signature
+const otherPartySigned = isClient ? contract.seeker_signed_at : contract.client_signed_at
+if (otherPartySigned) {
+updateData.fully_executed_at = now
 }
+
+const { data: updatedContract, error } = await supabase
+.from('contracts')
+.update(updateData)
+.eq('id', contract.id)
+.select()
+.single()
+
+if (error) throw error
+
+setContract(updatedContract)
+
+if (updatedContract.fully_executed_at) {
+alert('🎉 Contract fully signed by both parties! You can now proceed with the work.')
+} else {
+alert(`Contract signed successfully! Waiting for ${isClient ? 'service provider' : 'client'} signature.`)
+}
+
 } catch (error: any) {
 console.error('Error signing:', error)
 alert('Failed to sign contract: ' + error.message)
+} finally {
+setSigning(false)
 }
 }
 
@@ -105,16 +161,23 @@ const gig = contractData?.gigs
 const seekerInfo = contractData?.profiles
 const clientInfo = contractData?.client_profiles?.[0]
 
+const clientSigned = !!contract?.client_signed_at
+const seekerSigned = !!contract?.seeker_signed_at
+const fullyExecuted = !!contract?.fully_executed_at
+
+const userHasSigned = isClient ? clientSigned : seekerSigned
+const canSign = !userHasSigned && !fullyExecuted
+
 return (
 <div className="min-h-screen bg-gray-50">
 <nav className="bg-white shadow-sm">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <Link href={isClient ? '/dashboard/client' : '/dashboard/gig-seeker'} className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
+<span className="text-2xl font-bold text-green-600">B</span>
 <span className="ml-2 text-xl font-semibold">BaseGigs</span>
 </Link>
-<Link href={`/chat/${applicationId}`} className="text-gray-700 hover:text-primary">
+<Link href={`/chat/${applicationId}`} className="text-gray-700 hover:text-green-600">
 ← Back to Chat
 </Link>
 </div>
@@ -125,7 +188,9 @@ return (
 <div className="bg-white rounded-lg shadow-lg p-8">
 <div className="text-center mb-8">
 <h1 className="text-3xl font-bold text-gray-900 mb-2">Service Agreement Contract</h1>
-<p className="text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+<p className="text-gray-600">
+Contract ID: #{contract?.id} | Created: {new Date(contract?.created_at).toLocaleDateString()}
+</p>
 </div>
 
 <div className="space-y-6 text-gray-800">
@@ -178,7 +243,9 @@ return (
 <div>
 <p className="text-green-600 font-bold">✓ SIGNED</p>
 <p className="text-sm text-gray-600">{clientInfo?.full_name}</p>
-<p className="text-sm text-gray-600">{new Date().toLocaleString()}</p>
+<p className="text-sm text-gray-600">
+{new Date(contract.client_signed_at).toLocaleString()}
+</p>
 </div>
 ) : (
 <p className="text-gray-500">Awaiting signature...</p>
@@ -191,7 +258,9 @@ return (
 <div>
 <p className="text-green-600 font-bold">✓ SIGNED</p>
 <p className="text-sm text-gray-600">{seekerInfo?.full_name}</p>
-<p className="text-sm text-gray-600">{new Date().toLocaleString()}</p>
+<p className="text-sm text-gray-600">
+{new Date(contract.seeker_signed_at).toLocaleString()}
+</p>
 </div>
 ) : (
 <p className="text-gray-500">Awaiting signature...</p>
@@ -199,29 +268,30 @@ return (
 </div>
 </div>
 
-{!clientSigned && !seekerSigned && (
+{canSign && (
 <div className="mt-6">
 <button
 onClick={handleSign}
-className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold text-lg"
+disabled={signing}
+className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
 >
-Sign Contract as {isClient ? 'Client' : 'Service Provider'}
+{signing ? 'Signing...' : `Sign Contract as ${isClient ? 'Client' : 'Service Provider'}`}
 </button>
 </div>
 )}
 
-{(clientSigned || seekerSigned) && !(clientSigned && seekerSigned) && (
+{userHasSigned && !fullyExecuted && (
 <div className="mt-6 bg-yellow-50 border border-yellow-200 p-4 rounded">
 <p className="text-yellow-800">
-⏳ Waiting for {isClient ? 'Service Provider' : 'Client'} to sign the contract.
+⏳ You have signed. Waiting for {isClient ? 'Service Provider' : 'Client'} to sign the contract.
 </p>
 </div>
 )}
 
-{clientSigned && seekerSigned && (
+{fullyExecuted && (
 <div className="mt-6 bg-green-50 border border-green-200 p-4 rounded">
 <p className="text-green-800 font-semibold">
-✓ Contract fully executed by both parties! You may now proceed with the work.
+✓ Contract fully executed on {new Date(contract.fully_executed_at).toLocaleDateString()}! You may now proceed with the work.
 </p>
 </div>
 )}
@@ -232,6 +302,12 @@ Sign Contract as {isClient ? 'Client' : 'Service Provider'}
 <p className="text-sm text-gray-500">
 This is a legally binding contract. Keep a copy for your records.
 </p>
+<button
+onClick={() => window.print()}
+className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+>
+🖨️ Print Contract
+</button>
 </div>
 </div>
 </div>
