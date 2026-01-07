@@ -106,6 +106,7 @@ return (
 </Link>
 </div>
 <div className="flex items-center space-x-4">
+<Link href="/my-contracts" className="px-4 py-2 text-gray-700 hover:text-primary font-medium">📄 My Contracts</Link>
 <span className="text-gray-700">Welcome, {profile?.full_name}</span>
 <button onClick={handleLogout} className="px-4 py-2 text-gray-700 hover:text-primary">
 Logout
@@ -140,7 +141,12 @@ Logout
 <div className="flex justify-between items-center mb-6">
 <h2 className="text-2xl font-bold">Quick Actions</h2>
 </div>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<Link href="/my-contracts" className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center">
+<div className="text-3xl mb-2">📄</div>
+<h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
+<p className="text-gray-600">View and manage all contracts</p>
+</Link>
 <Link href="/dashboard/client/applications" className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center">
 <h3 className="text-xl font-semibold text-primary mb-2">View Applications</h3>
 <p className="text-gray-600">Review applications from gig seekers</p>
