@@ -72,6 +72,7 @@ return (
 <div className="flex justify-between items-center h-16">
 <Link href="/" className="flex items-center"><span className="text-2xl font-bold text-primary">B</span><span className="ml-2 text-xl font-semibold">BaseGigs</span></Link>
 <div className="flex items-center space-x-4">
+<Link href="/my-contracts" className="px-4 py-2 text-gray-700 hover:text-primary font-medium">📄 My Contracts</Link>
 <span className="text-gray-700">Welcome, {profile?.full_name}</span>
 <button onClick={handleLogout} className="px-4 py-2 text-gray-700 hover:text-primary">Logout</button>
 </div>
@@ -96,7 +97,12 @@ return (
 </div>
 <div className="bg-white rounded-lg shadow p-6">
 <h2 className="text-2xl font-bold mb-6">Client Actions</h2>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Link href="/my-contracts" className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center">
+<div className="text-3xl mb-2">📄</div>
+<h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
+<p className="text-gray-600">View and manage all contracts</p>
+</Link>
 <Link href="/post-gig" className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"><h3 className="text-xl font-semibold text-primary mb-2">Post a Gig</h3><p className="text-gray-600">Create a new gig listing</p></Link>
 <Link href="/find-talent" className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"><h3 className="text-xl font-semibold mb-2">Find Talent</h3><p className="text-gray-600">Browse verified gig seekers</p></Link>
 </div>
@@ -112,7 +118,12 @@ return (
 </div>
 <div className="bg-white rounded-lg shadow p-6">
 <h2 className="text-2xl font-bold mb-6">Gig Seeker Actions</h2>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Link href="/my-contracts" className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center">
+<div className="text-3xl mb-2">📄</div>
+<h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
+<p className="text-gray-600">View and sign contracts</p>
+</Link>
 <Link href="/browse-gigs" className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"><h3 className="text-xl font-semibold text-primary mb-2">Browse Gigs</h3><p className="text-gray-600">Find and apply for gigs</p></Link>
 <Link href="/dashboard/gig-seeker/profile" className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"><h3 className="text-xl font-semibold mb-2">Edit Profile</h3><p className="text-gray-600">Update your skills</p></Link>
 </div>
