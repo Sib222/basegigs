@@ -30,15 +30,15 @@ setCurrentUser(user)
 // Get user role
 const { data: profile } = await supabase
 .from('profiles')
-.select('role')
+.select('role, user_type')
 .eq('id', user.id)
 .single()
 
 if (profile) {
-setUserRole(profile.role)
+setUserRole(profile.user_type || profile.role)
 }
 
-await fetchContracts(user.id, profile?.role)
+await fetchContracts(user.id, profile?.user_type || profile?.role)
 }
 
 const fetchContracts = async (userId: string, role: string) => {
@@ -73,8 +73,10 @@ seeker_profile:profiles!contracts_gig_seeker_id_fkey (full_name)
 // Filter based on user role
 if (role === 'client') {
 query = query.eq('client_id', userId)
-} else {
+} else if (role === 'gig_seeker') {
 query = query.eq('gig_seeker_id', userId)
+} else if (role === 'both') {
+query = query.or(`client_id.eq.${userId},gig_seeker_id.eq.${userId}`)
 }
 
 const { data, error } = await query
@@ -118,18 +120,19 @@ return (
 }
 
 const isClient = userRole === 'client'
+const isGigSeeker = userRole === 'gig_seeker'
 
 return (
 <div className="min-h-screen bg-gray-50">
 <nav className="bg-white shadow-sm">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
-<Link href={isClient ? '/dashboard/client' : '/dashboard/gig-seeker'} className="flex items-center">
+<Link href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')} className="flex items-center">
 <span className="text-2xl font-bold text-green-600">B</span>
 <span className="ml-2 text-xl font-semibold">BaseGigs</span>
 </Link>
 <Link
-href={isClient ? '/dashboard/client' : '/dashboard/gig-seeker'}
+href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')}
 className="text-gray-700 hover:text-green-600"
 >
 ← Back to Dashboard
@@ -185,11 +188,13 @@ Fully Signed ({contracts.filter(c => c.fully_executed_at).length})
 <h3 className="text-xl font-semibold text-gray-900 mb-2">No contracts found</h3>
 <p className="text-gray-600 mb-6">
 {filter === 'all'
-? "You don't have any contracts yet. Contracts are created when you accept applicants."
+? (isGigSeeker
+? "You don't have any contracts yet. Contracts are created after your application has been accepted."
+: "You don't have any contracts yet. Contracts are created when you accept applicants.")
 : `No ${filter} contracts found.`}
 </p>
 <Link
-href={isClient ? '/dashboard/client' : '/dashboard/gig-seeker'}
+href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')}
 className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
 >
 Go to Dashboard
