@@ -20,6 +20,7 @@ client_name: string
 seeker_name: string
 client_id: string
 seeker_id: string
+application_status: string
 }
 
 export default function ChatPage({ params }: { params: { applicationId: string } }) {
@@ -30,6 +31,7 @@ const [loading, setLoading] = useState(true)
 const [sending, setSending] = useState(false)
 const [currentUser, setCurrentUser] = useState<any>(null)
 const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null)
+const [hasContract, setHasContract] = useState(false)
 const messagesEndRef = useRef<HTMLDivElement>(null)
 const applicationId = parseInt(params.applicationId)
 
@@ -76,6 +78,7 @@ return
 setCurrentUser(user)
 await fetchChatInfo(user.id)
 await fetchMessages()
+await checkContract()
 }
 
 const fetchChatInfo = async (userId: string) => {
@@ -85,6 +88,7 @@ const { data: application, error } = await supabase
 .select(`
 gig_seeker_id,
 client_id,
+status,
 gigs (gig_name, client_name),
 profiles!applications_gig_seeker_id_fkey (full_name)
 `)
@@ -110,13 +114,31 @@ gig_name: (application.gigs as any)?.gig_name || 'Unknown Gig',
 client_name: (application.gigs as any)?.client_name || 'Unknown Client',
 seeker_name: (application.profiles as any)?.full_name || 'Unknown Seeker',
 client_id: application.client_id,
-seeker_id: application.gig_seeker_id
+seeker_id: application.gig_seeker_id,
+application_status: application.status || 'pending'
 })
 } catch (error: any) {
 console.error('Error fetching chat info:', error)
 alert('Error loading chat: ' + error.message)
 } finally {
 setLoading(false)
+}
+}
+
+const checkContract = async () => {
+try {
+const { data, error } = await supabase
+.from('contracts')
+.select('id')
+.eq('application_id', applicationId)
+.single()
+
+if (data) {
+setHasContract(true)
+}
+} catch (error) {
+// No contract exists yet, which is fine
+setHasContract(false)
 }
 }
 
@@ -175,6 +197,8 @@ return (
 )
 }
 
+const isAccepted = chatInfo?.application_status === 'accepted'
+
 return (
 <div className="min-h-screen bg-gray-50 flex flex-col">
 <nav className="bg-white shadow-sm">
@@ -202,6 +226,28 @@ className="text-gray-700 hover:text-primary"
 </div>
 </div>
 </nav>
+
+{isAccepted && (
+<div className="max-w-4xl w-full mx-auto mt-4 px-4">
+<Link
+href={`/contract/${applicationId}`}
+className="block w-full bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all p-4 text-center"
+>
+<div className="flex items-center justify-center gap-3">
+<span className="text-2xl">📄</span>
+<div className="text-left">
+<div className="font-bold text-lg">
+{hasContract ? 'View Service Agreement' : 'Create Service Agreement'}
+</div>
+<div className="text-sm text-green-100">
+{hasContract ? 'Review and sign your contract' : 'Auto-generated from gig details'}
+</div>
+</div>
+<span className="text-xl">→</span>
+</div>
+</Link>
+</div>
+)}
 
 <div className="flex-1 max-w-4xl w-full mx-auto flex flex-col bg-white shadow-lg my-4">
 <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -257,11 +303,13 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 </form>
 </div>
 
-<div className="bg-blue-50 border-t border-blue-200 p-4 text-center">
-<p className="text-sm text-blue-800">
-💡 Tip: Once you&apos;ve agreed on terms, you can generate a contract from this chat.
+{!isAccepted && (
+<div className="bg-yellow-50 border-t border-yellow-200 p-4 text-center">
+<p className="text-sm text-yellow-800">
+⏳ Contract will be available once the application is accepted.
 </p>
 </div>
+)}
 </div>
 )
 }
