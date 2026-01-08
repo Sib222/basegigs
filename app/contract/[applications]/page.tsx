@@ -42,9 +42,7 @@ const { data: application, error: appError } = await supabase
 id,
 gig_seeker_id,
 client_id,
-gigs (gig_name, gig_type, payment_amount, payment_type, city, province, explanation, requirements),
-profiles!applications_gig_seeker_id_fkey (full_name, phone_number, email),
-client_profiles:profiles!applications_client_id_fkey (full_name, phone_number, email)
+gig_id
 `)
 .eq('id', applicationId)
 .single()
@@ -63,7 +61,39 @@ router.push('/dashboard')
 return
 }
 
-setContractData(application)
+// Fetch gig details
+const { data: gig, error: gigError } = await supabase
+.from('gigs')
+.select('*')
+.eq('id', application.gig_id)
+.single()
+
+if (gigError) throw gigError
+
+// Fetch gig seeker profile
+const { data: seekerProfile, error: seekerError } = await supabase
+.from('profiles')
+.select('full_name, phone_number, email')
+.eq('user_id', application.gig_seeker_id)
+.single()
+
+if (seekerError) throw seekerError
+
+// Fetch client profile
+const { data: clientProfile, error: clientError } = await supabase
+.from('profiles')
+.select('full_name, phone_number, email')
+.eq('user_id', application.client_id)
+.single()
+
+if (clientError) throw clientError
+
+setContractData({
+...application,
+gigs: gig,
+profiles: seekerProfile,
+client_profiles: clientProfile
+})
 
 const { data: existingContract, error: contractError } = await supabase
 .from('contracts')
@@ -266,7 +296,7 @@ return (
 const isClient = currentUser?.id === contractData?.client_id
 const gig = contractData?.gigs
 const seekerInfo = contractData?.profiles
-const clientInfo = contractData?.client_profiles?.[0]
+const clientInfo = contractData?.client_profiles
 
 const clientSigned = !!contract?.client_signed_at
 const seekerSigned = !!contract?.seeker_signed_at
