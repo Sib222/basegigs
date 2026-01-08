@@ -30,8 +30,21 @@ router.push('/login')
 return
 }
 
-setCurrentUser(user)
-await fetchContractData(user.id)
+// Get the profile to get the correct user_id
+const { data: profile } = await supabase
+.from('profiles')
+.select('id, user_id')
+.eq('user_id', user.id)
+.single()
+
+if (!profile) {
+alert('Profile not found')
+router.push('/dashboard')
+return
+}
+
+setCurrentUser({ ...user, profile_id: profile.id, user_id: profile.user_id })
+await fetchContractData(profile.user_id)
 }
 
 const fetchContractData = async (userId: string) => {
@@ -139,7 +152,7 @@ return
 }
 
 setSigning(true)
-const isClient = currentUser.id === contractData.client_id
+const isClient = currentUser.user_id === contractData.client_id
 
 try {
 const updateData: any = {}
@@ -194,7 +207,7 @@ const { data: updatedContract, error } = await supabase
 .from('contracts')
 .update({
 pending_changes: changeRequest,
-pending_changes_by: currentUser.id,
+pending_changes_by: currentUser.user_id,
 pending_changes_at: new Date().toISOString()
 })
 .eq('id', contract.id)
@@ -293,7 +306,7 @@ return (
 )
 }
 
-const isClient = currentUser?.id === contractData?.client_id
+const isClient = currentUser?.user_id === contractData?.client_id
 const gig = contractData?.gigs
 const seekerInfo = contractData?.profiles
 const clientInfo = contractData?.client_profiles
@@ -305,7 +318,7 @@ const fullyExecuted = !!contract?.fully_executed_at
 const userHasSigned = isClient ? clientSigned : seekerSigned
 const canSign = !userHasSigned && !fullyExecuted && !contract?.pending_changes
 const hasPendingChanges = !!contract?.pending_changes
-const isChangeRequester = contract?.pending_changes_by === currentUser?.id
+const isChangeRequester = contract?.pending_changes_by === currentUser?.user_id
 const canApproveChanges = hasPendingChanges && !isChangeRequester
 
 return (
