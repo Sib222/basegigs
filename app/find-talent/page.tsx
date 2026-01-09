@@ -15,6 +15,7 @@ years_of_experience: number | null
 availability: string | null
 expected_hourly_rate: number | null
 verified: boolean
+photo_url: string | null
 }
 
 export default function FindTalentPage() {
@@ -95,7 +96,8 @@ experience,
 years_of_experience,
 availability,
 expected_hourly_rate,
-verified
+verified,
+photo_url
 `)
 .eq('verified', true)
 .order('user_id', { ascending: false })
@@ -149,6 +151,15 @@ seeker.profiles?.province === selectedProvince
 }
 
 return filtered
+}
+
+const getPhotoUrl = (photoUrl: string | null) => {
+if (!photoUrl) return null
+// If it's already a full URL, return it
+if (photoUrl.startsWith('http')) return photoUrl
+// If it's a storage path, construct the public URL
+const { data } = supabase.storage.from('profile-photos').getPublicUrl(photoUrl)
+return data.publicUrl
 }
 
 const isClient = userType === 'client' || userType === 'both'
@@ -238,10 +249,37 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 </div>
 ) : (
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-{filteredSeekers.map((seeker) => (
-<div key={seeker.user_id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-<div className="flex items-start justify-between mb-4">
-<div className="flex-1">
+{filteredSeekers.map((seeker) => {
+const photoUrl = getPhotoUrl(seeker.photo_url)
+return (
+<div key={seeker.user_id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+{/* Profile Photo */}
+<div className="relative h-48 bg-gradient-to-br from-green-100 to-green-200">
+{photoUrl ? (
+<img
+src={photoUrl}
+alt={seeker.profiles?.full_name || 'Profile'}
+className="w-full h-full object-cover"
+onError={(e) => {
+// Fallback to placeholder if image fails to load
+e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(seeker.profiles?.full_name || 'User')}&size=400&background=10b981&color=fff&bold=true`
+}}
+/>
+) : (
+<div className="w-full h-full flex items-center justify-center">
+<div className="text-6xl text-green-600">👤</div>
+</div>
+)}
+{seeker.verified && (
+<span className="absolute top-3 right-3 px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded-full shadow-lg">
+✓ Verified
+</span>
+)}
+</div>
+
+{/* Profile Info */}
+<div className="p-6">
+<div className="mb-4">
 <h3 className="text-xl font-bold text-gray-900 mb-1">
 {seeker.profiles?.full_name || 'Anonymous'}
 </h3>
@@ -251,12 +289,6 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 <div className="text-sm text-gray-600">
 📍 {seeker.profiles?.city}, {seeker.profiles?.province}
 </div>
-</div>
-{seeker.verified && (
-<span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-✓ Verified
-</span>
-)}
 </div>
 
 {seeker.background_story && (
@@ -301,7 +333,9 @@ View Full Profile
 </div>
 )}
 </div>
-))}
+</div>
+)
+})}
 </div>
 )}
 </div>
