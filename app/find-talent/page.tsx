@@ -16,6 +16,10 @@ availability: string | null
 expected_hourly_rate: number | null
 verified: boolean
 photo_url: string | null
+documents: string[] | null
+languages: string | null
+travel_distance: string | null
+portfolio_url: string | null
 }
 
 export default function FindTalentPage() {
@@ -23,6 +27,8 @@ const [seekers, setSeekers] = useState<GigSeeker[]>([])
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
 const [userType, setUserType] = useState<string | null>(null)
+const [selectedSeeker, setSelectedSeeker] = useState<GigSeeker | null>(null)
+const [showModal, setShowModal] = useState(false)
 
 const [searchTerm, setSearchTerm] = useState('')
 const [selectedService, setSelectedService] = useState('All Services')
@@ -97,7 +103,11 @@ years_of_experience,
 availability,
 expected_hourly_rate,
 verified,
-photo_url
+photo_url,
+documents,
+languages,
+travel_distance,
+portfolio_url
 `)
 .eq('verified', true)
 .order('user_id', { ascending: false })
@@ -155,11 +165,29 @@ return filtered
 
 const getPhotoUrl = (photoUrl: string | null) => {
 if (!photoUrl) return null
-// If it's already a full URL, return it
 if (photoUrl.startsWith('http')) return photoUrl
-// If it's a storage path, construct the public URL
 const { data } = supabase.storage.from('profile-photos').getPublicUrl(photoUrl)
 return data.publicUrl
+}
+
+const getDocumentUrl = (docPath: string) => {
+if (docPath.startsWith('http')) return docPath
+const { data } = supabase.storage.from('documents').getPublicUrl(docPath)
+return data.publicUrl
+}
+
+const getDocumentName = (docPath: string) => {
+// Extract filename from path like "c978-cv-template.pdf"
+const parts = docPath.split('/')
+const filename = parts[parts.length - 1]
+// Remove UUID prefix if present
+const cleanName = filename.replace(/^[a-f0-9-]+-/, '')
+return cleanName
+}
+
+const openProfile = (seeker: GigSeeker) => {
+setSelectedSeeker(seeker)
+setShowModal(true)
 }
 
 const isClient = userType === 'client' || userType === 'both'
@@ -253,7 +281,6 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 const photoUrl = getPhotoUrl(seeker.photo_url)
 return (
 <div key={seeker.user_id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-{/* Profile Photo */}
 <div className="relative h-48 bg-gradient-to-br from-green-100 to-green-200">
 {photoUrl ? (
 <img
@@ -261,7 +288,6 @@ src={photoUrl}
 alt={seeker.profiles?.full_name || 'Profile'}
 className="w-full h-full object-cover"
 onError={(e) => {
-// Fallback to placeholder if image fails to load
 e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(seeker.profiles?.full_name || 'User')}&size=400&background=10b981&color=fff&bold=true`
 }}
 />
@@ -277,7 +303,6 @@ e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(see
 )}
 </div>
 
-{/* Profile Info */}
 <div className="p-6">
 <div className="mb-4">
 <h3 className="text-xl font-bold text-gray-900 mb-1">
@@ -324,7 +349,10 @@ e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(see
 </div>
 
 {isClient ? (
-<button className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold">
+<button
+onClick={() => openProfile(seeker)}
+className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold"
+>
 View Full Profile
 </button>
 ) : (
@@ -339,6 +367,165 @@ View Full Profile
 </div>
 )}
 </div>
+
+{/* Full Profile Modal */}
+{showModal && selectedSeeker && (
+<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+<div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+<div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+<h2 className="text-2xl font-bold">Full Profile</h2>
+<button
+onClick={() => setShowModal(false)}
+className="text-gray-500 hover:text-gray-700 text-2xl"
+>
+×
+</button>
+</div>
+
+<div className="p-6">
+{/* Profile Header with Photo */}
+<div className="flex items-start gap-6 mb-6">
+<div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0">
+{getPhotoUrl(selectedSeeker.photo_url) ? (
+<img
+src={getPhotoUrl(selectedSeeker.photo_url)!}
+alt={selectedSeeker.profiles?.full_name || 'Profile'}
+className="w-full h-full object-cover"
+/>
+) : (
+<div className="w-full h-full flex items-center justify-center text-4xl text-green-600">
+👤
+</div>
+)}
+</div>
+<div className="flex-1">
+<h3 className="text-2xl font-bold mb-2">{selectedSeeker.profiles?.full_name}</h3>
+<div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+<div>📧 Age: {selectedSeeker.profiles?.age}</div>
+<div>🚻 Gender: {selectedSeeker.profiles?.gender}</div>
+<div>📍 Location: {selectedSeeker.profiles?.city}, {selectedSeeker.profiles?.province}</div>
+<div>🚗 Car: {selectedSeeker.profiles?.has_car ? 'Yes' : 'No'}</div>
+{selectedSeeker.languages && <div>🗣️ Languages: {selectedSeeker.languages}</div>}
+{selectedSeeker.travel_distance && <div>🚶 Travel: {selectedSeeker.travel_distance}</div>}
+</div>
+</div>
+</div>
+
+{/* Background Story */}
+{selectedSeeker.background_story && (
+<div className="mb-6">
+<h4 className="text-lg font-bold mb-2">About Me</h4>
+<p className="text-gray-700 whitespace-pre-wrap">{selectedSeeker.background_story}</p>
+</div>
+)}
+
+{/* All Services */}
+<div className="mb-6">
+<h4 className="text-lg font-bold mb-2">Services Offered</h4>
+<div className="flex flex-wrap gap-2">
+{selectedSeeker.gig_services?.map((service, idx) => (
+<span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+{service}
+</span>
+))}
+</div>
+</div>
+
+{/* Experience & Education */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div>
+<h4 className="text-lg font-bold mb-2">Experience</h4>
+<div className="bg-gray-50 p-4 rounded-lg">
+<p className="text-sm text-gray-600 mb-2">
+<strong>Level:</strong> {selectedSeeker.experience || 'Not specified'}
+</p>
+<p className="text-sm text-gray-600">
+<strong>Years:</strong> {selectedSeeker.years_of_experience || 0} years
+</p>
+</div>
+</div>
+<div>
+<h4 className="text-lg font-bold mb-2">Education</h4>
+<div className="bg-gray-50 p-4 rounded-lg">
+<p className="text-sm text-gray-600">
+{selectedSeeker.education_level || 'Not specified'}
+</p>
+</div>
+</div>
+</div>
+
+{/* Availability & Rate */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div>
+<h4 className="text-lg font-bold mb-2">Availability</h4>
+<div className="bg-gray-50 p-4 rounded-lg">
+<p className="text-sm text-gray-600">{selectedSeeker.availability || 'Not specified'}</p>
+</div>
+</div>
+{selectedSeeker.expected_hourly_rate && (
+<div>
+<h4 className="text-lg font-bold mb-2">Expected Rate</h4>
+<div className="bg-gray-50 p-4 rounded-lg">
+<p className="text-sm text-gray-600">R{selectedSeeker.expected_hourly_rate}/hour</p>
+</div>
+</div>
+)}
+</div>
+
+{/* Portfolio */}
+{selectedSeeker.portfolio_url && (
+<div className="mb-6">
+<h4 className="text-lg font-bold mb-2">Portfolio</h4>
+<a
+href={selectedSeeker.portfolio_url}
+target="_blank"
+rel="noopener noreferrer"
+className="text-blue-600 hover:underline"
+>
+{selectedSeeker.portfolio_url}
+</a>
+</div>
+)}
+
+{/* Supporting Documents */}
+{selectedSeeker.documents && selectedSeeker.documents.length > 0 && (
+<div className="mb-6">
+<h4 className="text-lg font-bold mb-2">Supporting Documents</h4>
+<div className="space-y-2">
+{selectedSeeker.documents.map((doc, idx) => (
+<a
+key={idx}
+href={getDocumentUrl(doc)}
+target="_blank"
+rel="noopener noreferrer"
+className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+>
+<div className="flex items-center gap-2">
+<span className="text-2xl">📄</span>
+<span className="text-sm font-medium">{getDocumentName(doc)}</span>
+</div>
+<span className="text-blue-600 text-sm">Download →</span>
+</a>
+))}
+</div>
+</div>
+)}
+
+<div className="flex gap-3 pt-4 border-t">
+<button
+onClick={() => setShowModal(false)}
+className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+>
+Close
+</button>
+<button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+Contact Gig Seeker
+</button>
+</div>
+</div>
+</div>
+</div>
+)}
 </div>
 )
 }
