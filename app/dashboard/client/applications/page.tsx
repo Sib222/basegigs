@@ -37,6 +37,8 @@ expected_hourly_rate: number
 languages: string[]
 travel_distance: string
 portfolio_url: string
+photo_url: string
+documents: string[]
 }
 }
 
@@ -168,6 +170,26 @@ alert('Failed to decline application: ' + error.message)
 }
 }
 
+const getPhotoUrl = (photoUrl: string | null) => {
+if (!photoUrl) return null
+if (photoUrl.startsWith('http')) return photoUrl
+const { data } = supabase.storage.from('profile-photos').getPublicUrl(photoUrl)
+return data.publicUrl
+}
+
+const getDocumentUrl = (docPath: string) => {
+if (docPath.startsWith('http')) return docPath
+const { data } = supabase.storage.from('documents').getPublicUrl(docPath)
+return data.publicUrl
+}
+
+const getDocumentName = (docPath: string) => {
+const parts = docPath.split('/')
+const filename = parts[parts.length - 1]
+const cleanName = filename.replace(/^[a-f0-9-]+-/, '')
+return cleanName
+}
+
 const filteredApplications = filter === 'all'
 ? applications
 : applications.filter(app => app.status === filter)
@@ -240,10 +262,27 @@ Go to Dashboard
 </div>
 ) : (
 <div className="space-y-6">
-{filteredApplications.map((app) => (
-<div key={app.id} className="bg-white rounded-lg shadow-md p-6">
-<div className="flex justify-between items-start mb-4">
-<div>
+{filteredApplications.map((app) => {
+const photoUrl = getPhotoUrl(app.gig_seeker_profiles?.photo_url)
+return (
+<div key={app.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+{/* Header with Photo */}
+<div className="flex items-start gap-4 p-6 bg-gray-50 border-b">
+{photoUrl ? (
+<img
+src={photoUrl}
+alt={app.profiles?.full_name}
+className="w-20 h-20 rounded-full object-cover"
+onError={(e) => {
+e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.profiles?.full_name || 'User')}&size=200&background=10b981&color=fff&bold=true`
+}}
+/>
+) : (
+<div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-3xl">
+👤
+</div>
+)}
+<div className="flex-1">
 <div className="text-sm text-gray-500 mb-1">Applied to: {app.gigs?.gig_name || 'Unknown Gig'}</div>
 <h2 className="text-2xl font-bold text-gray-900">{app.profiles?.full_name || 'Unknown'}</h2>
 <div className="text-sm text-gray-600 mt-1">
@@ -259,6 +298,7 @@ app.status === 'accepted' ? 'bg-green-100 text-green-800' :
 </div>
 </div>
 
+<div className="p-6">
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h3 className="font-semibold text-gray-900 mb-2">Contact:</h3>
@@ -328,6 +368,33 @@ app.status === 'accepted' ? 'bg-green-100 text-green-800' :
 </div>
 )}
 
+{/* Supporting Documents Section */}
+{app.gig_seeker_profiles?.documents && app.gig_seeker_profiles.documents.length > 0 && (
+<div className="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+<h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+<span className="text-xl">📎</span>
+Supporting Documents
+</h3>
+<div className="space-y-2">
+{app.gig_seeker_profiles.documents.map((doc, idx) => (
+<a
+key={idx}
+href={getDocumentUrl(doc)}
+target="_blank"
+rel="noopener noreferrer"
+className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition border border-blue-100"
+>
+<div className="flex items-center gap-3">
+<span className="text-2xl">📄</span>
+<span className="text-sm font-medium text-gray-700">{getDocumentName(doc)}</span>
+</div>
+<span className="text-blue-600 text-sm font-medium">View/Download →</span>
+</a>
+))}
+</div>
+</div>
+)}
+
 {app.status === 'pending' && (
 <div className="flex space-x-4 pt-4 border-t">
 <button
@@ -357,7 +424,9 @@ Open Chat 💬
 Applied: {new Date(app.applied_at).toLocaleString()}
 </div>
 </div>
-))}
+</div>
+)
+})}
 </div>
 )}
 </div>
