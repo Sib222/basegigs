@@ -21,6 +21,7 @@ deadline: string
 status: string
 applicant_count: number
 created_at: string
+expires_at: string
 }
 
 export default function BrowseGigsPage() {
@@ -116,6 +117,7 @@ const { data, error } = await supabase
 .from('gigs')
 .select('*')
 .eq('status', 'open')
+.gt('expires_at', new Date().toISOString()) // Only fetch non-expired gigs
 .order('created_at', { ascending: false })
 
 if (error) throw error
@@ -227,6 +229,18 @@ if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
 return `${Math.floor(diffDays / 30)} months ago`
 }
 
+const getTimeRemaining = (expiresAt: string) => {
+const now = new Date()
+const expiry = new Date(expiresAt)
+const days = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+if (days < 0) return 'Expired'
+if (days === 0) return 'Expires today'
+if (days === 1) return 'Expires tomorrow'
+if (days <= 3) return `${days} days left`
+return null // Don't show if more than 3 days
+}
+
 const canApply = userType === 'gig_seeker' || userType === 'both'
 const filteredGigs = filterGigs()
 
@@ -323,11 +337,20 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 </div>
 ) : (
 <div className="grid grid-cols-1 gap-6">
-{filteredGigs.map((gig) => (
+{filteredGigs.map((gig) => {
+const timeRemaining = gig.expires_at ? getTimeRemaining(gig.expires_at) : null
+return (
 <div key={gig.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
 <div className="flex justify-between items-start mb-4">
-<div>
-<div className="text-sm text-gray-500 mb-1">{gig.gig_type}</div>
+<div className="flex-1">
+<div className="flex items-center gap-2 mb-1">
+<span className="text-sm text-gray-500">{gig.gig_type}</span>
+{timeRemaining && (
+<span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
+⏰ {timeRemaining}
+</span>
+)}
+</div>
 <h2 className="text-2xl font-bold text-gray-900 mb-2">{gig.gig_name}</h2>
 <p className="text-gray-700 mb-3">{gig.explanation}</p>
 </div>
@@ -393,7 +416,8 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 Posted by: {gig.client_name}
 </div>
 </div>
-))}
+)
+})}
 </div>
 )}
 </div>
