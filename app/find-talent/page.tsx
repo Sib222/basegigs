@@ -29,6 +29,9 @@ const [currentUser, setCurrentUser] = useState<any>(null)
 const [userType, setUserType] = useState<string | null>(null)
 const [selectedSeeker, setSelectedSeeker] = useState<GigSeeker | null>(null)
 const [showModal, setShowModal] = useState(false)
+const [showInviteModal, setShowInviteModal] = useState(false)
+const [clientGigs, setClientGigs] = useState<any[]>([])
+const [inviting, setInviting] = useState(false)
 
 const [searchTerm, setSearchTerm] = useState('')
 const [selectedService, setSelectedService] = useState('All Services')
@@ -177,10 +180,8 @@ return data.publicUrl
 }
 
 const getDocumentName = (docPath: string) => {
-// Extract filename from path like "c978-cv-template.pdf"
 const parts = docPath.split('/')
 const filename = parts[parts.length - 1]
-// Remove UUID prefix if present
 const cleanName = filename.replace(/^[a-f0-9-]+-/, '')
 return cleanName
 }
@@ -188,6 +189,77 @@ return cleanName
 const openProfile = (seeker: GigSeeker) => {
 setSelectedSeeker(seeker)
 setShowModal(true)
+}
+
+const openInviteModal = async () => {
+if (!currentUser) {
+alert('Please log in to invite gig seekers')
+return
+}
+
+try {
+const { data, error } = await supabase
+.from('gigs')
+.select('*')
+.eq('client_id', currentUser.id)
+.eq('status', 'open')
+.gt('expires_at', new Date().toISOString())
+.order('created_at', { ascending: false })
+
+if (error) throw error
+
+if (!data || data.length === 0) {
+alert('You have no active gigs. Please post a gig first!')
+return
+}
+
+setClientGigs(data)
+setShowInviteModal(true)
+} catch (error: any) {
+console.error('Error fetching gigs:', error)
+alert('Failed to load your gigs: ' + error.message)
+}
+}
+
+const handleInvite = async (gigId: number) => {
+if (!selectedSeeker || !currentUser) return
+
+setInviting(true)
+
+try {
+const { data: existing } = await supabase
+.from('applications')
+.select('id')
+.eq('gig_id', gigId)
+.eq('gig_seeker_id', selectedSeeker.user_id)
+.single()
+
+if (existing) {
+alert('This gig seeker has already applied or been invited to this gig.')
+setInviting(false)
+return
+}
+
+const { error } = await supabase
+.from('applications')
+.insert({
+gig_id: gigId,
+gig_seeker_id: selectedSeeker.user_id,
+client_id: currentUser.id,
+status: 'pending'
+})
+
+if (error) throw error
+
+alert(`Invitation sent to ${selectedSeeker.profiles?.full_name}! They'll be notified.`)
+setShowInviteModal(false)
+setShowModal(false)
+} catch (error: any) {
+console.error('Error inviting:', error)
+alert('Failed to send invitation: ' + error.message)
+} finally {
+setInviting(false)
+}
 }
 
 const isClient = userType === 'client' || userType === 'both'
@@ -383,7 +455,6 @@ className="text-gray-500 hover:text-gray-700 text-2xl"
 </div>
 
 <div className="p-6">
-{/* Profile Header with Photo */}
 <div className="flex items-start gap-6 mb-6">
 <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0">
 {getPhotoUrl(selectedSeeker.photo_url) ? (
@@ -411,7 +482,6 @@ className="w-full h-full object-cover"
 </div>
 </div>
 
-{/* Background Story */}
 {selectedSeeker.background_story && (
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">About Me</h4>
@@ -419,7 +489,6 @@ className="w-full h-full object-cover"
 </div>
 )}
 
-{/* All Services */}
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">Services Offered</h4>
 <div className="flex flex-wrap gap-2">
@@ -431,7 +500,6 @@ className="w-full h-full object-cover"
 </div>
 </div>
 
-{/* Experience & Education */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h4 className="text-lg font-bold mb-2">Experience</h4>
@@ -454,7 +522,6 @@ className="w-full h-full object-cover"
 </div>
 </div>
 
-{/* Availability & Rate */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h4 className="text-lg font-bold mb-2">Availability</h4>
@@ -472,7 +539,6 @@ className="w-full h-full object-cover"
 )}
 </div>
 
-{/* Portfolio */}
 {selectedSeeker.portfolio_url && (
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">Portfolio</h4>
@@ -487,7 +553,6 @@ className="text-blue-600 hover:underline"
 </div>
 )}
 
-{/* Supporting Documents */}
 {selectedSeeker.documents && selectedSeeker.documents.length > 0 && (
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">Supporting Documents</h4>
@@ -518,9 +583,57 @@ className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-3
 >
 Close
 </button>
-<button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-Contact Gig Seeker
+<button
+onClick={openInviteModal}
+className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+>
+📨 Invite to Apply
 </button>
+</div>
+</div>
+</div>
+</div>
+)}
+
+{/* Invite Modal */}
+{showInviteModal && selectedSeeker && (
+<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+<div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+<div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+<h2 className="text-2xl font-bold">Invite to Your Gig</h2>
+<button
+onClick={() => setShowInviteModal(false)}
+className="text-gray-500 hover:text-gray-700 text-2xl"
+>
+×
+</button>
+</div>
+
+<div className="p-6">
+<p className="text-gray-600 mb-6">
+Select which gig you'd like to invite <strong>{selectedSeeker.profiles?.full_name}</strong> to apply for:
+</p>
+
+<div className="space-y-4">
+{clientGigs.map((gig) => (
+<div key={gig.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+<div className="flex justify-between items-start mb-2">
+<div className="flex-1">
+<h3 className="font-bold text-lg">{gig.gig_name}</h3>
+<p className="text-sm text-gray-600">{gig.gig_type}</p>
+<p className="text-sm text-gray-600">📍 {gig.city}, {gig.province}</p>
+<p className="text-green-600 font-semibold mt-2">R{gig.payment_amount?.toLocaleString()} ({gig.payment_type})</p>
+</div>
+<button
+onClick={() => handleInvite(gig.id)}
+disabled={inviting}
+className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
+>
+{inviting ? 'Inviting...' : 'Send Invite'}
+</button>
+</div>
+</div>
+))}
 </div>
 </div>
 </div>
