@@ -39,6 +39,7 @@ export default function PostGigPage() {
   const [loading, setLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [clientName, setClientName] = useState('')
+  const [subscription, setSubscription] = useState<any>(null)  // <--- Added
 
   const [gigName, setGigName] = useState('')
   const [gigType, setGigType] = useState('')
@@ -76,13 +77,13 @@ export default function PostGigPage() {
     }
 
     // Check subscription plan and gigs left
-    const { data: subscription } = await supabase
+    const { data: subscriptionData } = await supabase
       .from('subscriptions')
       .select('plan_name, gig_posts_left, expires_at')
       .eq('user_id', user.id)
       .single()
 
-    if (!subscription || subscription.gig_posts_left === 0 || new Date(subscription.expires_at) < new Date()) {
+    if (!subscriptionData || subscriptionData.gig_posts_left === 0 || new Date(subscriptionData.expires_at) < new Date()) {
       // Redirect to pricing page if no valid subscription or no gigs left or expired
       router.push('/pricing')
       return
@@ -90,6 +91,7 @@ export default function PostGigPage() {
 
     setCurrentUser(user)
     setClientName(profile.full_name)
+    setSubscription(subscriptionData)  // <--- Save subscription here
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,10 +102,15 @@ export default function PostGigPage() {
       return
     }
 
+    if (!subscription) {
+      alert('Subscription info missing, please reload the page')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const skillsArray = skills.split(',').map(s => s.trim()).filter(s => true)
+      const skillsArray = skills.split(',').map(s => s.trim()).filter(s => s.length > 0)
 
       const { error } = await supabase
         .from('gigs')
@@ -126,10 +133,10 @@ export default function PostGigPage() {
 
       if (error) throw error
 
-      // Decrease gigs_left by 1 for this user in subscriptions
+      // Decrease gig_posts_left by 1 for this user in subscriptions
       const { error: updateError } = await supabase
         .from('subscriptions')
-        .update({ gig_posts_left: (subscription?.gig_posts_left || 1) - 1 })
+        .update({ gig_posts_left: (subscription.gig_posts_left || 1) - 1 })
         .eq('user_id', currentUser.id)
 
       if (updateError) throw updateError
@@ -174,6 +181,9 @@ export default function PostGigPage() {
           <p className="text-gray-600 mb-8">Fill in the details to create your gig listing</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* form fields unchanged, omitted for brevity */}
+
+            {/* Full form fields as before */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Gig Name *
