@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'  // <-- Correct import here
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -51,6 +51,9 @@ export default function PostGigPage() {
   const [skills, setSkills] = useState('')
   const [deadline, setDeadline] = useState('')
 
+  const [subscription, setSubscription] = useState<any>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+
   useEffect(() => {
     checkUser()
   }, [])
@@ -77,6 +80,25 @@ export default function PostGigPage() {
 
     setCurrentUser(user)
     setClientName(profile.full_name)
+
+    // Fetch subscription on load
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    setSubscription(sub)
+  }
+
+  const isSubscriptionActive = () => {
+    if (!subscription) return false
+    if (!subscription.expires_at) return false
+    if (subscription.gig_posts_left <= 0) return false
+
+    const now = new Date()
+    const expires = new Date(subscription.expires_at)
+    return expires > now
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,12 +109,17 @@ export default function PostGigPage() {
       return
     }
 
+    if (!isSubscriptionActive()) {
+      setShowPaywall(true)
+      return
+    }
+
     setLoading(true)
 
     try {
       const skillsArray = skills.split(',').map(s => s.trim()).filter(s => s)
 
-      const { error } = await supabase
+      const { error: gigError } = await supabase
         .from('gigs')
         .insert({
           client_id: currentUser.id,
@@ -111,7 +138,23 @@ export default function PostGigPage() {
           applicant_count: 0
         })
 
-      if (error) throw error
+      if (gigError) throw gigError
+
+      // Decrement gig_posts_left
+      const { error: decError } = await supabase
+        .from('subscriptions')
+        .update({ gig_posts_left: subscription.gig_posts_left - 1 })
+        .eq('user_id', currentUser.id)
+
+      if (decError) {
+        console.warn('Failed to decrement gig posts left:', decError)
+      } else {
+        // Update local state for gig_posts_left decrement
+        setSubscription((prev: any) => ({
+          ...prev,
+          gig_posts_left: prev.gig_posts_left - 1,
+        }))
+      }
 
       alert('Gig posted successfully! Gig seekers can now apply.')
       router.push('/dashboard/client')
@@ -321,15 +364,33 @@ export default function PostGigPage() {
           </form>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">💡 Tips for posting a great gig</h3>
-          <ul className="text-blue-800 space-y-1 text-sm">
-            <li>• Be clear and specific about what you need</li>
-            <li>• List all required skills and qualifications</li>
-            <li>• Set a fair payment amount</li>
-            <li>• Include a realistic deadline</li>
-          </ul>
-        </div>
+        {/* Paywall Modal */}
+        {showPaywall && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-md p-6 mx-4 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">Upgrade Required</h2>
+              <p className="mb-6 text-gray-700">
+                You have no active subscription or you have used all your gig posts for this month.
+                Please upgrade your plan to post more gigs.
+              </p>
+              <button
+                onClick={() => {
+                  setShowPaywall(false)
+                  router.push('/dashboard/client/plans')
+                }}
+                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold"
+              >
+                Upgrade Plan
+              </button>
+              <button
+                onClick={() => setShowPaywall(false)}
+                className="mt-4 text-gray-600 underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
