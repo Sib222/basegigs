@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    const sessionUser = supabase.auth.getUser().then(({ data }) => {
+    async function fetchUser() {
+      const { data } = await supabase.auth.getUser()
       setUser(data.user)
-    })
+    }
+    fetchUser()
   }, [])
 
   const plans = [
@@ -24,11 +27,11 @@ export default function PricingPage() {
         'Unlimited applications',
         'Chat with applicants',
         'Contract generation',
-        'Basic support',
+        'Basic support'
       ],
       cta: 'Post a Gig',
       href: '/post-gig',
-      popular: false,
+      popular: false
     },
     {
       name: 'Starter',
@@ -41,11 +44,11 @@ export default function PricingPage() {
         'Chat with applicants',
         'Contract generation',
         'Standard support',
-        'Basic analytics',
+        'Basic analytics'
       ],
       cta: 'Get Started',
       href: '/signup',
-      popular: true,
+      popular: true
     },
     {
       name: 'Professional',
@@ -59,39 +62,39 @@ export default function PricingPage() {
         'Advanced analytics',
         'Chat with applicants',
         'Contract generation',
-        'Everything in Starter',
+        'Everything in Starter'
       ],
       cta: 'Go Pro',
       href: '/signup',
-      popular: false,
-    },
+      popular: false
+    }
   ]
 
   const faqs = [
     {
       q: 'Is there a fee for gig seekers?',
-      a: 'No! BaseGigs is 100% free for gig seekers. Browse, apply, chat, and sign contracts at no cost.',
+      a: 'No! BaseGigs is 100% free for gig seekers. Browse, apply, chat, and sign contracts at no cost.'
     },
     {
       q: 'How long does a gig posting stay active?',
-      a: 'Each gig post stays active for 30 days. For Pay-Per-Gig, you pay R100 per post. With subscriptions, you can post multiple gigs that each stay active for 30 days.',
+      a: 'Each gig post stays active for 30 days. For Pay-Per-Gig, you pay R100 per post. With subscriptions, you can post multiple gigs that each stay active for 30 days.'
     },
     {
       q: 'Can I cancel my subscription anytime?',
-      a: "Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.",
+      a: 'Yes, you can cancel your subscription at any time. You\'ll continue to have access until the end of your billing period.'
     },
     {
       q: 'What happens if I exceed 5 gigs on the Starter plan?',
-      a: 'You can either wait until next month, upgrade to Professional for unlimited posts, or pay R100 per additional gig post.',
+      a: 'You can either wait until next month, upgrade to Professional for unlimited posts, or pay R100 per additional gig post.'
     },
     {
       q: 'Do you take a commission on contracts?',
-      a: "No! We don't take any commission from your contracts. You only pay for posting gigs - everything else is free.",
+      a: 'No! We don\'t take any commission from your contracts. You only pay for posting gigs - everything else is free.'
     },
     {
       q: 'What payment methods do you accept?',
-      a: 'We accept all major credit/debit cards, EFT, and SnapScan. All payments are processed securely.',
-    },
+      a: 'We accept all major credit/debit cards, EFT, and SnapScan. All payments are processed securely.'
+    }
   ]
 
   return (
@@ -112,32 +115,13 @@ export default function PricingPage() {
             <div className="flex items-center space-x-4">
               {user ? (
                 <>
-                  <a href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium">
-                    Dashboard
-                  </a>
-                  <a
-                    href="#"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      await supabase.auth.signOut()
-                      window.location.href = '/'
-                    }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                  >
-                    Logout
-                  </a>
+                  <a href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium">Dashboard</a>
+                  <a href="/logout" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Logout</a>
                 </>
               ) : (
                 <>
-                  <a href="/login" className="text-gray-700 hover:text-green-600 font-medium">
-                    Login
-                  </a>
-                  <a
-                    href="/signup"
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                  >
-                    Sign Up
-                  </a>
+                  <a href="/login" className="text-gray-700 hover:text-green-600 font-medium">Login</a>
+                  <a href="/signup" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Sign Up</a>
                 </>
               )}
             </div>
@@ -149,16 +133,14 @@ export default function PricingPage() {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Choose the plan that fits your hiring needs. No hidden fees, cancel anytime.
-          </p>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">Choose the plan that fits your hiring needs. No hidden fees, cancel anytime.</p>
           <div className="mt-6 inline-flex items-center backdrop-blur-md bg-green-100/50 rounded-full px-6 py-3 border border-green-200/50">
             <span className="text-green-800 font-semibold">✨ 100% Free for Gig Seekers</span>
           </div>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
           {plans.map((plan, idx) => (
             <div
               key={idx}
@@ -188,11 +170,7 @@ export default function PricingPage() {
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
+                    <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -218,29 +196,16 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Bank Transfer Payment Info */}
-        <div className="max-w-3xl mx-auto bg-white/40 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-xl mb-16">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Alternative Payment Option</h2>
-          <p className="mb-2 text-gray-700">
-            Prefer not to pay online? You can also make a bank transfer to the following account. Please
-            use your email address as the reference number to ensure your payment is correctly allocated.
-          </p>
-          <ul className="text-gray-800 space-y-1 font-medium">
-            <li>
-              <strong>Bank:</strong> Standard Bank
-            </li>
-            <li>
-              <strong>Account Holder:</strong> Miss TS Thwala
-            </li>
-            <li>
-              <strong>Account Number:</strong> 10 057 317 842
-            </li>
-            <li>
-              <strong>Account Type:</strong> Savings
-            </li>
-            <li>
-              <strong>Branch Code:</strong> 053252
-            </li>
+        {/* Bank Transfer Info */}
+        <div className="max-w-3xl mx-auto backdrop-blur-lg bg-white/40 rounded-2xl p-6 border border-white/30 shadow-xl mb-16">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Alternative Payment Method</h2>
+          <p className="text-gray-700 mb-2">Prefer not to use card? You can pay via bank transfer with the details below. Please use your email address as the reference number when making the payment.</p>
+          <ul className="text-gray-700 space-y-1">
+            <li><strong>Bank:</strong> Standard Bank</li>
+            <li><strong>Account Holder:</strong> Miss TS Thwala</li>
+            <li><strong>Account Number:</strong> 10 057 317 842</li>
+            <li><strong>Account Type:</strong> Savings</li>
+            <li><strong>Branch Code:</strong> 053252</li>
           </ul>
         </div>
 
@@ -282,20 +247,12 @@ export default function PricingPage() {
         {/* CTA Section */}
         <div className="mt-20 text-center backdrop-blur-lg bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl p-12 border border-green-200/50">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to find your perfect gig worker?</h2>
-          <p className="text-gray-700 mb-8 max-w-2xl mx-auto">
-            Join hundreds of South African businesses hiring talented gig seekers on BaseGigs.
-          </p>
+          <p className="text-gray-700 mb-8 max-w-2xl mx-auto">Join hundreds of South African businesses hiring talented gig seekers on BaseGigs.</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <a
-              href="/signup"
-              className="px-8 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg"
-            >
+            <a href="/signup" className="px-8 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg">
               Get Started Now
             </a>
-            <a
-              href="/find-talent"
-              className="px-8 py-4 bg-white/60 text-green-700 rounded-xl font-semibold hover:bg-white/80 border border-green-200"
-            >
+            <a href="/find-talent" className="px-8 py-4 bg-white/60 text-green-700 rounded-xl font-semibold hover:bg-white/80 border border-green-200">
               Browse Talent
             </a>
           </div>
@@ -304,18 +261,10 @@ export default function PricingPage() {
 
       <style jsx>{`
         @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob {
           animation: blob 7s infinite;
