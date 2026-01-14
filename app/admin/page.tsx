@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+
+type PlanKey = 'pay_per_gig' | 'starter' | 'professional'
 
 const PLANS = {
   pay_per_gig: { name: 'Pay-per-Gig', gigs: 1 },
@@ -10,173 +12,130 @@ const PLANS = {
   professional: { name: 'Professional', gigs: Infinity },
 }
 
+function daysLeft(expiresAt: string | null) {
+  if (!expiresAt) return 0
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0
+}
+
 export default function AdminPage() {
   const router = useRouter()
-  const [password, setPassword] = useState('')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [password, setPassword] = useState('')
+  const [authenticated, setAuthenticated] = useState(false)
   const [clients, setClients] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
 
-  const ADMIN_PASSWORD = 'Simelane1*'
-
-  // Login handler
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setIsLoggedIn(true)
-      fetchClients()
-    } else {
-      alert('Incorrect password')
-    }
-  }
-
-  // Fetch clients + their subscriptions (left join)
+  // Fetch clients with their subscription info
   const fetchClients = async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase
         .from('client_profiles')
-        .select(`
-          user_id,
-          full_name,
-          email,
-          subscriptions:subscriptions (
-            plan_name,
-            gig_posts_left,
-            activated_at,
-            expires_at
-          )
-        `)
+        .select(
+          `
+            user_id,
+            full_name,
+            email,
+            subscriptions (
+              plan_name,
+              gig_posts_left,
+              activated_at,
+              expires_at
+            )
+          `
+        )
+        .order('full_name')
 
       if (error) throw error
 
-      // data is array of client_profiles with nested subscriptions array (maybe empty)
-      // We'll normalize to one subscription (assuming one per user)
-      const clientsWithSub = data?.map((client: any) => {
-        const sub = client.subscriptions?.[0] || null
-        return {
-          user_id: client.user_id,
-          full_name: client.full_name,
-          email: client.email,
-          subscription: sub,
-        }
-      }) || []
-
-      setClients(clientsWithSub)
+      setClients(data || [])
     } catch (error) {
-      console.error('Error fetching clients:', error)
       alert('Failed to fetch clients')
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Calculates days left from now to expiration date
-  const calculateDaysLeft = (expiresAt: string | null) => {
-    if (!expiresAt) return 'N/A'
-    const now = new Date()
-    const expires = new Date(expiresAt)
-    const diffTime = expires.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays > 0 ? diffDays : 0
+  useEffect(() => {
+    if (authenticated) {
+      fetchClients()
+    }
+  }, [authenticated])
+
+  const handleLogin = () => {
+    if (password === 'Simelane1*') {
+      setAuthenticated(true)
+    } else {
+      alert('Incorrect password')
+    }
   }
 
-  // Handles toggling subscription plan for a user
-  const handlePlanChange = async (userId: string, newPlanKey: string | null) => {
+  // Handle plan toggle
+  const handlePlanChange = async (userId: string, newPlanKey: string) => {
     setLoading(true)
-
     try {
       if (!newPlanKey) {
-        // Clear subscription for user (delete subscription row)
+        // Clear subscription
         const { error } = await supabase
           .from('subscriptions')
           .delete()
           .eq('user_id', userId)
-
         if (error) throw error
       } else {
         // Upsert subscription row for user with selected plan
-        const plan = PLANS[newPlanKey]
+        const plan = PLANS[newPlanKey as keyof typeof PLANS]
         if (!plan) throw new Error('Invalid plan')
 
         const activatedAt = new Date().toISOString()
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        const gigPostsLeft = plan.gigs === Infinity ? 99999 : plan.gigs // large number for unlimited
+        const gigsLeft = plan.gigs === Infinity ? 9999 : plan.gigs
 
-        // Check if subscription exists
-        const { data: existingSub, error: selectError } = await supabase
+        // Upsert: update if exists, insert if not
+        const { error } = await supabase
           .from('subscriptions')
-          .select('id')
-          .eq('user_id', userId)
-          .single()
-
-        if (selectError && selectError.code !== 'PGRST116') throw selectError
-
-        if (existingSub) {
-          // update
-          const { error: updateError } = await supabase
-            .from('subscriptions')
-            .update({
-              plan_name: plan.name,
-              gig_posts_left: gigPostsLeft,
-              activated_at: activatedAt,
-              expires_at: expiresAt,
-            })
-            .eq('user_id', userId)
-
-          if (updateError) throw updateError
-        } else {
-          // insert
-          const { error: insertError } = await supabase
-            .from('subscriptions')
-            .insert({
+          .upsert(
+            {
               user_id: userId,
               plan_name: plan.name,
-              gig_posts_left: gigPostsLeft,
+              gig_posts_left: gigsLeft,
               activated_at: activatedAt,
               expires_at: expiresAt,
-            })
-
-          if (insertError) throw insertError
-        }
+            },
+            { onConflict: 'user_id' }
+          )
+        if (error) throw error
       }
-
       await fetchClients()
     } catch (error: any) {
-      console.error('Error updating subscription:', error)
-      alert('Failed to update subscription: ' + error.message)
+      alert('Failed to update plan: ' + error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter clients based on search term by name/email
-  const filteredClients = clients.filter(client => {
-    const term = searchTerm.toLowerCase()
-    return (
-      client.full_name.toLowerCase().includes(term) ||
-      client.email.toLowerCase().includes(term)
-    )
-  })
+  const filteredClients = clients.filter(
+    (client) =>
+      client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-  if (!isLoggedIn) {
+  if (!authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="bg-white rounded-md shadow-md p-8 max-w-sm w-full">
-          <h1 className="text-2xl font-bold mb-4 text-center">Admin Login</h1>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded shadow-md w-80">
+          <h1 className="text-2xl font-semibold mb-4">Admin Login</h1>
           <input
             type="password"
-            placeholder="Enter admin password"
-            className="w-full px-4 py-2 border border-gray-300 rounded mb-4 focus:outline-primary"
+            placeholder="Enter password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleLogin()
-            }}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded mb-4"
           />
           <button
             onClick={handleLogin}
-            className="w-full bg-primary text-white py-2 rounded hover:bg-green-600 font-semibold"
+            className="w-full bg-primary text-white py-2 rounded hover:bg-green-600"
           >
             Login
           </button>
@@ -186,63 +145,65 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 max-w-6xl mx-auto">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Admin Dashboard</h1>
-        <input
-          type="search"
-          placeholder="Search clients by name or email"
-          className="px-4 py-2 border border-gray-300 rounded w-full max-w-xs focus:outline-primary"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </header>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <h1 className="text-3xl font-bold mb-6">Admin Dashboard - Client Subscriptions</h1>
+
+      <input
+        type="text"
+        placeholder="Search clients by name or email"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="mb-6 p-3 border border-gray-300 rounded w-full max-w-md"
+      />
 
       {loading ? (
-        <div className="text-center text-lg text-gray-600">Loading...</div>
-      ) : filteredClients.length === 0 ? (
-        <div className="text-center text-gray-600">No clients found.</div>
+        <p>Loading clients...</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full table-auto border-collapse border border-gray-300 rounded-lg">
+          <table className="min-w-full bg-white shadow rounded-lg">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
-                <th className="border border-gray-300 px-4 py-2 text-center">Current Plan</th>
-                <th className="border border-gray-300 px-4 py-2 text-center">Gigs Left</th>
-                <th className="border border-gray-300 px-4 py-2 text-center">Days Left</th>
-                <th className="border border-gray-300 px-4 py-2 text-center">Change Plan</th>
+              <tr className="bg-primary text-white">
+                <th className="py-3 px-6 text-left">Client Name</th>
+                <th className="py-3 px-6 text-left">Email</th>
+                <th className="py-3 px-6 text-center">Current Plan</th>
+                <th className="py-3 px-6 text-center">Gig Posts Left</th>
+                <th className="py-3 px-6 text-center">Days Left</th>
+                <th className="py-3 px-6 text-center">Change Plan</th>
               </tr>
             </thead>
             <tbody>
-              {filteredClients.map(client => {
-                const { subscription } = client
-                const currentPlan = subscription?.plan_name || 'No subscription'
-                const gigsLeft = subscription?.gig_posts_left ?? 0
-                const daysLeft = subscription?.expires_at ? calculateDaysLeft(subscription.expires_at) : 'N/A'
+              {filteredClients.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-4">
+                    No clients found.
+                  </td>
+                </tr>
+              )}
+              {filteredClients.map((client) => {
+                const sub = client.subscriptions?.[0] || null
+                const currentPlanName = sub?.plan_name || 'No Subscription'
+                const gigsLeft = sub?.gig_posts_left ?? 0
+                const daysRemaining = sub?.expires_at ? daysLeft(sub.expires_at) : 0
 
                 return (
-                  <tr key={client.user_id} className="even:bg-white odd:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">{client.full_name}</td>
-                    <td className="border border-gray-300 px-4 py-2">{client.email}</td>
-                    <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                      {currentPlan}
+                  <tr key={client.user_id} className="border-b">
+                    <td className="py-3 px-6">{client.full_name}</td>
+                    <td className="py-3 px-6">{client.email}</td>
+                    <td className="py-3 px-6 text-center font-semibold">
+                      {currentPlanName}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">{gigsLeft}</td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">{daysLeft}</td>
-                    <td className="border border-gray-300 px-4 py-2 text-center space-x-2">
-                      {/* Buttons for each plan */}
+                    <td className="py-3 px-6 text-center">{gigsLeft}</td>
+                    <td className="py-3 px-6 text-center">{daysRemaining}</td>
+                    <td className="py-3 px-6 text-center space-x-2">
                       {Object.entries(PLANS).map(([key, plan]) => {
-                        const isActive =
-                          subscription && subscription.plan_name === plan.name
+                        const isSelected = currentPlanName === plan.name
                         return (
                           <button
                             key={key}
-                            onClick={() => handlePlanChange(client.user_id, key)}
                             disabled={loading}
-                            className={`px-3 py-1 rounded border font-semibold ${
-                              isActive
+                            onClick={() => handlePlanChange(client.user_id, isSelected ? '' : key)}
+                            className={`px-3 py-1 rounded border ${
+                              isSelected
                                 ? 'bg-primary text-white border-primary'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                             }`}
@@ -251,15 +212,13 @@ export default function AdminPage() {
                           </button>
                         )
                       })}
-
-                      {/* Button to clear plan */}
+                      {/* Button to clear subscription */}
                       <button
-                        onClick={() => handlePlanChange(client.user_id, null)}
                         disabled={loading}
-                        className="px-3 py-1 rounded border border-red-500 text-red-600 font-semibold hover:bg-red-100"
-                        title="Clear subscription"
+                        onClick={() => handlePlanChange(client.user_id, '')}
+                        className="px-3 py-1 rounded border border-red-500 text-red-500 hover:bg-red-100"
                       >
-                        Clear
+                        Clear Plan
                       </button>
                     </td>
                   </tr>
