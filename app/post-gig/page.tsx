@@ -74,20 +74,17 @@ export default function PostGigPage() {
       return
     }
 
-    // 🔑 Fetch ACTIVE subscription only
     const { data: activeSub } = await supabase
       .from('active_subscriptions')
       .select('*')
       .eq('user_id', user.id)
       .single()
 
-    // ❌ No subscription → pricing
     if (!activeSub) {
       router.push('/pricing')
       return
     }
 
-    // ❌ Out of gig posts (except professional)
     if (
       activeSub.plan_name !== 'professional' &&
       activeSub.gig_posts_left <= 0
@@ -146,7 +143,6 @@ export default function PostGigPage() {
 
       if (insertError) throw insertError
 
-      // ⬇️ Decrement gig posts (NOT professional)
       if (subscription.plan_name !== 'professional') {
         await supabase
           .from('subscriptions')
@@ -180,38 +176,160 @@ export default function PostGigPage() {
           <Link href="/dashboard/client" className="font-bold text-primary text-xl">
             BaseGigs
           </Link>
-          <Link href="/dashboard/client">← Back</Link>
+          <Link href="/dashboard/client" className="text-gray-700 hover:underline">
+            ← Back
+          </Link>
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto p-6 bg-white mt-6 rounded-lg shadow">
+      <main className="max-w-3xl mx-auto p-6 bg-white mt-6 rounded-lg shadow">
         <h1 className="text-3xl font-bold mb-6">Post a Gig</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input className="input" placeholder="Gig name" value={gigName} onChange={e => setGigName(e.target.value)} />
-          <select className="input" value={gigType} onChange={e => setGigType(e.target.value)}>
-            <option value="">Select gig type</option>
-            {GIG_TYPES.map(t => <option key={t}>{t}</option>)}
-          </select>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="gigName" className="block mb-1 font-semibold">Gig Name *</label>
+            <input
+              id="gigName"
+              type="text"
+              value={gigName}
+              onChange={e => setGigName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Enter gig name"
+              required
+            />
+          </div>
 
-          <input className="input" placeholder="City" value={city} onChange={e => setCity(e.target.value)} />
+          <div>
+            <label htmlFor="gigType" className="block mb-1 font-semibold">Gig Type *</label>
+            <select
+              id="gigType"
+              value={gigType}
+              onChange={e => setGigType(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              <option value="">Select gig type</option>
+              {GIG_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
 
-          <select className="input" value={province} onChange={e => setProvince(e.target.value)}>
-            <option value="">Select province</option>
-            {PROVINCES.map(p => <option key={p}>{p}</option>)}
-          </select>
+          <div>
+            <label htmlFor="city" className="block mb-1 font-semibold">City *</label>
+            <input
+              id="city"
+              type="text"
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Enter city"
+              required
+            />
+          </div>
 
-          <textarea className="input" placeholder="Explanation" value={explanation} onChange={e => setExplanation(e.target.value)} />
-          <textarea className="input" placeholder="Requirements" value={requirements} onChange={e => setRequirements(e.target.value)} />
-          <input className="input" placeholder="Skills (comma separated)" value={skills} onChange={e => setSkills(e.target.value)} />
-          <input type="number" className="input" placeholder="Payment (ZAR)" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
-          <input type="date" className="input" value={deadline} onChange={e => setDeadline(e.target.value)} />
+          <div>
+            <label htmlFor="province" className="block mb-1 font-semibold">Province *</label>
+            <select
+              id="province"
+              value={province}
+              onChange={e => setProvince(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              <option value="">Select province</option>
+              {PROVINCES.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
 
-          <button disabled={loading} className="w-full bg-primary text-white py-3 rounded">
+          <div>
+            <label htmlFor="explanation" className="block mb-1 font-semibold">Explanation *</label>
+            <textarea
+              id="explanation"
+              value={explanation}
+              onChange={e => setExplanation(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Describe the gig"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="requirements" className="block mb-1 font-semibold">Requirements *</label>
+            <textarea
+              id="requirements"
+              value={requirements}
+              onChange={e => setRequirements(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="List requirements"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="skills" className="block mb-1 font-semibold">Skills (comma separated)</label>
+            <input
+              id="skills"
+              type="text"
+              value={skills}
+              onChange={e => setSkills(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="e.g. photography, editing"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="paymentAmount" className="block mb-1 font-semibold">Payment (ZAR) *</label>
+              <input
+                id="paymentAmount"
+                type="number"
+                min="0"
+                value={paymentAmount}
+                onChange={e => setPaymentAmount(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Amount in ZAR"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="paymentType" className="block mb-1 font-semibold">Payment Type</label>
+              <select
+                id="paymentType"
+                value={paymentType}
+                onChange={e => setPaymentType(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="Fixed">Fixed</option>
+                <option value="Hourly">Hourly</option>
+                <option value="Negotiable">Negotiable</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="deadline" className="block mb-1 font-semibold">Deadline</label>
+            <input
+              id="deadline"
+              type="date"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-white py-3 rounded hover:bg-green-600 transition disabled:opacity-50"
+          >
             {loading ? 'Posting…' : 'Post Gig'}
           </button>
         </form>
-      </div>
+      </main>
     </div>
   )
 }
