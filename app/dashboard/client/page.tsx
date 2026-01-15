@@ -234,26 +234,63 @@ export default function ClientDashboard() {
             <p>No active gigs.</p>
           ) : (
             activeGigs.map((gig) => (
-              <div key={gig.id} className="border p-4 flex justify-between">
+              <div key={gig.id} className="border p-4 flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold">{gig.gig_name}</h3>
                   <p className="text-sm text-gray-600">
-                    {gig.city}, {gig.province}
+                    {gig.gig_type} — {gig.city}, {gig.province}
                   </p>
                 </div>
-                <button onClick={() => handleDeleteGig(gig.id)}>🗑️</button>
+                <button
+                  onClick={() => handleDeleteGig(gig.id)}
+                  disabled={deletingGigId === gig.id}
+                  aria-label={`Delete gig ${gig.gig_name}`}
+                  className="text-red-600 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                  title="Delete Gig"
+                >
+                  {deletingGigId === gig.id ? 'Deleting...' : '🗑️'}
+                </button>
               </div>
             ))
           )}
         </Section>
+
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-6">Client Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              href="/my-contracts"
+              className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center"
+            >
+              <div className="text-3xl mb-2">📄</div>
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
+              <p className="text-gray-600">View and manage all contracts</p>
+            </Link>
+            <Link
+              href="/post-gig"
+              className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"
+            >
+              <h3 className="text-xl font-semibold text-primary mb-2">Post a Gig</h3>
+              <p className="text-gray-600">Create a new gig listing</p>
+            </Link>
+            <Link
+              href="/find-talent"
+              className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+            >
+              <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
+              <p className="text-gray-600">Browse verified gig seekers</p>
+            </Link>
+          </div>
+        </div>
 
         <div className="text-center mt-10">
           <button
             onClick={handleDeleteAccount}
             disabled={deleting}
             className="px-6 py-3 bg-red-600 text-white rounded-lg animate-pulse"
+            style={{ boxShadow: '0 0 12px 4px rgba(220,38,38,0.8)' }}
           >
-            Delete My Account
+            {deleting ? 'Deleting Account...' : 'Delete My Account'}
           </button>
         </div>
       </div>
@@ -270,7 +307,7 @@ function Stat({ title, value }: { title: string; value: number }) {
   )
 }
 
-function Section({ title, children }: { title: string; children: any }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white shadow rounded p-6 mb-8">
       <h2 className="text-2xl font-bold mb-4">{title}</h2>
