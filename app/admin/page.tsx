@@ -37,10 +37,11 @@ export default function AdminPage() {
   async function fetchData() {
     setError(null)
 
-    // 1. Fetch clients ONLY
+    // Fetch users with user_type 'client' or 'both'
     const { data: clientData, error: clientError } = await supabase
-      .from('client_profiles')
+      .from('profiles')
       .select('user_id, full_name, email')
+      .in('user_type', ['client', 'both'])
       .order('full_name', { ascending: true })
 
     if (clientError) {
@@ -51,7 +52,7 @@ export default function AdminPage() {
 
     setClients(clientData || [])
 
-    // 2. Fetch subscriptions separately
+    // Fetch subscriptions separately
     const { data: subData, error: subError } = await supabase
       .from('subscriptions')
       .select('user_id, plan_name, gig_posts_left, expires_at')
@@ -151,12 +152,8 @@ export default function AdminPage() {
                   <td className="p-3 capitalize">
                     {sub ? sub.plan_name.replace('_', ' ') : 'No plan'}
                   </td>
-                  <td className="p-3">
-                    {sub?.gig_posts_left ?? '—'}
-                  </td>
-                  <td className="p-3">
-                    {sub ? daysLeft(sub.expires_at) : '—'}
-                  </td>
+                  <td className="p-3">{sub?.gig_posts_left ?? '—'}</td>
+                  <td className="p-3">{sub ? daysLeft(sub.expires_at) : '—'}</td>
                   <td className="p-3 space-x-2">
                     {(Object.keys(PLANS) as PlanKey[]).map((key) => (
                       <button
