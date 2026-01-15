@@ -30,7 +30,7 @@ export default function PricingPage() {
         'Basic support'
       ],
       cta: 'Post a Gig',
-      href: '/post-gig',
+      href: 'https://pay.yoco.com/r/2DGxWY',  // UPDATED TO YOCO LINK
       popular: false
     },
     {
@@ -47,7 +47,7 @@ export default function PricingPage() {
         'Basic analytics'
       ],
       cta: 'Get Started',
-      href: '/signup',
+      href: 'https://pay.yoco.com/r/mOE30j',  // UPDATED TO YOCO LINK
       popular: true
     },
     {
@@ -65,7 +65,7 @@ export default function PricingPage() {
         'Everything in Starter'
       ],
       cta: 'Go Pro',
-      href: '/signup',
+      href: 'https://pay.yoco.com/r/7v1Y3o',  // UPDATED TO YOCO LINK
       popular: false
     }
   ]
@@ -184,6 +184,8 @@ export default function PricingPage() {
 
               <a
                 href={plan.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`block w-full py-3 px-6 rounded-xl font-semibold transition-all text-center ${
                   plan.popular
                     ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg'
