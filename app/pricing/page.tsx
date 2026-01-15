@@ -254,6 +254,17 @@ export default function PricingPage() {
           </ul>
         </div>
 
+        {/* Subscription & Payment Info - NEW SECTION */}
+        <div className="max-w-3xl mx-auto backdrop-blur-lg bg-white/40 rounded-2xl p-6 border border-white/30 shadow-xl mb-16">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Subscription & Payment Info</h2>
+          <p className="text-gray-800 text-base leading-relaxed">
+            BaseGigs does not use automatic recurring payments. To maintain an active subscription, you need to manually renew your plan by making a payment each time your gig post limit is reached or your subscription period ends (typically 30 days).
+          </p>
+          <p className="text-gray-800 text-base leading-relaxed mt-4">
+            If you wish to cancel your subscription, simply stop making payments. Your current subscription will remain active until its expiration, after which no further charges will be applied. There are no automatic deductions or renewals.
+          </p>
+        </div>
+
         {/* FAQ Section */}
         <div className="max-w-3xl mx-auto backdrop-blur-lg bg-white/40 rounded-2xl p-8 border border-white/30 shadow-xl">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-8">Pricing FAQ</h2>
