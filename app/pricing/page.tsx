@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean>(false)
   const [loadingSubs, setLoadingSubs] = useState<boolean>(true)
+
+  const router = useRouter()
 
   useEffect(() => {
     async function fetchUser() {
@@ -38,6 +42,11 @@ export default function PricingPage() {
     }
     fetchUser()
   }, [])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const plans = [
     {
@@ -152,20 +161,35 @@ export default function PricingPage() {
       <nav className="backdrop-blur-md bg-white/30 border-b border-white/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <a href="/" className="flex items-center">
+            <Link href="/" className="flex items-center">
               <span className="text-2xl font-bold text-green-600">B</span>
               <span className="ml-2 text-xl font-semibold text-gray-800">BaseGigs</span>
-            </a>
+            </Link>
             <div className="flex items-center space-x-4">
               {user ? (
                 <>
-                  <a href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium">Dashboard</a>
-                  <a href="/logout" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Logout</a>
+                  <Link href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium">
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                    type="button"
+                  >
+                    Logout
+                  </button>
                 </>
               ) : (
                 <>
-                  <a href="/login" className="text-gray-700 hover:text-green-600 font-medium">Login</a>
-                  <a href="/signup" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Sign Up</a>
+                  <Link href="/login" className="text-gray-700 hover:text-green-600 font-medium">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  >
+                    Sign Up
+                  </Link>
                 </>
               )}
             </div>
@@ -305,12 +329,12 @@ export default function PricingPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to find your perfect gig worker?</h2>
           <p className="text-gray-700 mb-8 max-w-2xl mx-auto">Join hundreds of South African businesses hiring talented gig seekers on BaseGigs.</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <a href="/signup" className="px-8 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg">
+            <Link href="/signup" className="px-8 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg">
               Get Started Now
-            </a>
-            <a href="/find-talent" className="px-8 py-4 bg-white/60 text-green-700 rounded-xl font-semibold hover:bg-white/80 border border-green-200">
+            </Link>
+            <Link href="/find-talent" className="px-8 py-4 bg-white/60 text-green-700 rounded-xl font-semibold hover:bg-white/80 border border-green-200">
               Browse Talent
-            </a>
+            </Link>
           </div>
         </div>
       </div>
