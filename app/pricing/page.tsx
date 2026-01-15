@@ -7,11 +7,34 @@ import type { User } from '@supabase/supabase-js'
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean>(false)
+  const [loadingSubs, setLoadingSubs] = useState<boolean>(true)
 
   useEffect(() => {
     async function fetchUser() {
       const { data } = await supabase.auth.getUser()
       setUser(data.user)
+
+      if (data.user) {
+        // Query subscriptions table for active subscription(s) for this user
+        // Assuming your subscriptions table has user_id and some kind of status or expiry
+        const { data: subsData, error } = await supabase
+          .from('subscriptions')
+          .select('id, status, expiry_date')
+          .eq('user_id', data.user.id)
+          .in('status', ['active', 'trialing']) // adjust statuses as per your app
+          .gte('expiry_date', new Date().toISOString()) // active means not expired
+          .limit(1)
+          .maybeSingle()
+
+        if (error) {
+          console.error('Error checking subscription:', error)
+          setHasActiveSubscription(false)
+        } else {
+          setHasActiveSubscription(!!subsData)
+        }
+      }
+      setLoadingSubs(false)
     }
     fetchUser()
   }, [])
@@ -30,7 +53,7 @@ export default function PricingPage() {
         'Basic support'
       ],
       cta: 'Post a Gig',
-      href: 'https://pay.yoco.com/r/2DGxWY',  // UPDATED TO YOCO LINK
+      href: 'https://pay.yoco.com/r/2DGxWY',
       popular: false
     },
     {
@@ -47,7 +70,7 @@ export default function PricingPage() {
         'Basic analytics'
       ],
       cta: 'Get Started',
-      href: 'https://pay.yoco.com/r/mOE30j',  // UPDATED TO YOCO LINK
+      href: 'https://pay.yoco.com/r/mOE30j',
       popular: true
     },
     {
@@ -65,7 +88,7 @@ export default function PricingPage() {
         'Everything in Starter'
       ],
       cta: 'Go Pro',
-      href: 'https://pay.yoco.com/r/7v1Y3o',  // UPDATED TO YOCO LINK
+      href: 'https://pay.yoco.com/r/7v1Y3o',
       popular: false
     }
   ]
@@ -96,6 +119,27 @@ export default function PricingPage() {
       a: 'We accept all major credit/debit cards, EFT, and SnapScan. All payments are processed securely.'
     }
   ]
+
+  function handlePaymentClick(planHref: string) {
+    if (!user) {
+      // Not logged in → redirect to login
+      window.location.href = '/login'
+      return
+    }
+
+    if (loadingSubs) {
+      alert('Checking subscription status, please wait...')
+      return
+    }
+
+    if (hasActiveSubscription) {
+      alert('You currently have an active subscription plan. Please manage your existing plan before purchasing another.')
+      return
+    }
+
+    // If no active subscription, open Yoco link in new tab
+    window.open(planHref, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative overflow-hidden">
@@ -182,18 +226,17 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <a
-                href={plan.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`block w-full py-3 px-6 rounded-xl font-semibold transition-all text-center ${
+              {/* Replace anchor with button and handle click */}
+              <button
+                onClick={() => handlePaymentClick(plan.href)}
+                className={`w-full py-3 px-6 rounded-xl font-semibold transition-all text-center ${
                   plan.popular
                     ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg'
                     : 'bg-white/60 text-green-700 hover:bg-white/80 border border-green-200'
                 }`}
               >
                 {plan.cta}
-              </a>
+              </button>
             </div>
           ))}
         </div>
