@@ -9,10 +9,11 @@ export default function BothDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
+  const [subscription, setSubscription] = useState<any>(null)
   const [activeView, setActiveView] = useState<'client' | 'seeker'>('client')
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
-  const [subscription, setSubscription] = useState<any>(null)
+  const [activeGigsCount, setActiveGigsCount] = useState(0)
 
   useEffect(() => {
     checkUser()
@@ -29,6 +30,7 @@ export default function BothDashboard() {
         router.push('/login')
         return
       }
+      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -54,19 +56,29 @@ export default function BothDashboard() {
       }
       setProfile(profileData)
 
-      // Fetch latest subscription for this user
-      const { data: subscriptionData, error: subscriptionError } = await supabase
+      // Fetch subscription info for user
+      const { data: subData, error: subError } = await supabase
         .from('subscriptions')
-        .select('plan_name, gig_posts_left, gigs_allowed, activated_at, expires_at')
+        .select('plan_name, gig_posts_left, gigs_allowed, expires_at')
         .eq('user_id', user.id)
-        .order('activated_at', { ascending: false })
-        .limit(1)
         .single()
-      if (subscriptionError) {
-        console.error('Subscription error:', subscriptionError)
-        // Not critical, just ignore if no subscription info
+      if (subError) {
+        console.error('Subscription error:', subError)
+        // Not fatal, continue
       } else {
-        setSubscription(subscriptionData)
+        setSubscription(subData)
+      }
+
+      // Fetch active gigs count (not deleted)
+      const { data: gigsData, error: gigsError } = await supabase
+        .from('gigs')
+        .select('id', { count: 'exact' })
+        .eq('client_id', user.id)
+        .is('deleted_at', null)
+      if (gigsError) {
+        console.error('Gigs fetch error:', gigsError)
+      } else {
+        setActiveGigsCount(gigsData?.length || 0)
       }
 
       setLoading(false)
@@ -178,13 +190,12 @@ export default function BothDashboard() {
             Gig Seeker View
           </button>
         </div>
-
         {activeView === 'client' && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Active Gigs</h3>
-                <p className="text-3xl font-bold text-primary">0</p>
+                <p className="text-3xl font-bold text-primary">{activeGigsCount}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Total Applications</h3>
@@ -195,23 +206,30 @@ export default function BothDashboard() {
                 <p className="text-3xl font-bold text-primary">0</p>
               </div>
             </div>
-
-            {/* Added subscription info here */}
-            {subscription && (
+            {/* SUBSCRIPTION INFO */}
+            {subscription ? (
               <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-2xl font-bold mb-4">Subscription Info</h2>
+                <h3 className="text-lg font-semibold mb-2">Subscription Details</h3>
                 <p>
                   <strong>Plan:</strong> {subscription.plan_name}
                 </p>
                 <p>
-                  <strong>Gig Posts Left:</strong> {subscription.gig_posts_left} / {subscription.gigs_allowed}
+                  <strong>Gigs Posted:</strong>{' '}
+                  {subscription.gigs_allowed - subscription.gig_posts_left} / {subscription.gigs_allowed}
                 </p>
                 <p>
-                  <strong>Expires At:</strong> {new Date(subscription.expires_at).toLocaleDateString()}
+                  <strong>Gigs Remaining:</strong> {subscription.gig_posts_left}
+                </p>
+                <p>
+                  <strong>Expires At:</strong> {subscription.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 className="text-lg font-semibold mb-2">Subscription Details</h3>
+                <p>No subscription data available.</p>
+              </div>
             )}
-
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-2xl font-bold mb-6">Client Actions</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -256,7 +274,6 @@ export default function BothDashboard() {
             </div>
           </div>
         )}
-
         {activeView === 'seeker' && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
