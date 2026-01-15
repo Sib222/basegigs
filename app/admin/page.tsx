@@ -24,15 +24,22 @@ const PLANS: Record<PlanKey, { label: string; gigs: number | null }> = {
   professional: { label: 'Professional', gigs: null }, // unlimited
 }
 
+const ADMIN_PASSWORD = 'Simelane1*'
+
 export default function AdminPage() {
   const [clients, setClients] = useState<ClientProfile[]>([])
   const [subscriptions, setSubscriptions] = useState<Record<string, Subscription>>({})
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [authorized, setAuthorized] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [authError, setAuthError] = useState('')
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (authorized) {
+      fetchData()
+    }
+  }, [authorized])
 
   async function fetchData() {
     setError(null)
@@ -105,6 +112,47 @@ export default function AdminPage() {
       (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     )
     return diff > 0 ? diff : 0
+  }
+
+  function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (passwordInput === ADMIN_PASSWORD) {
+      setAuthorized(true)
+      setAuthError('')
+    } else {
+      setAuthError('Incorrect password, try again.')
+      setPasswordInput('')
+    }
+  }
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <form
+          onSubmit={handlePasswordSubmit}
+          className="bg-white p-6 rounded shadow-md max-w-sm w-full"
+        >
+          <h2 className="text-xl font-bold mb-4 text-center">Admin Login</h2>
+          <input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            placeholder="Enter admin password"
+            className="w-full p-2 border rounded mb-4"
+            autoFocus
+          />
+          {authError && (
+            <p className="text-red-600 mb-4 text-center">{authError}</p>
+          )}
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-2 rounded hover:bg-green-600 transition"
+          >
+            Submit
+          </button>
+        </form>
+      </div>
+    )
   }
 
   return (
