@@ -4,224 +4,196 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trash2 } from 'lucide-react'
 
-export default function ClientDashboard() {
+interface Subscription {
+  plan: string
+  gigs_allowed: number
+  expires_at: string | null
+}
+
+interface Gig {
+  id: number
+  gig_name: string
+  gig_type: string
+  payment_amount: number
+  created_at: string
+}
+
+export default function ClientDashboardPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<any>(null)
-  const [error, setError] = useState('')
-  const [applicationCount, setApplicationCount] = useState(0)
-  const [deleting, setDeleting] = useState(false)
 
-  const [subscription, setSubscription] = useState<any>(null)
-  const [gigs, setGigs] = useState<any[]>([])
-  const [deletingGigId, setDeletingGigId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [gigs, setGigs] = useState<Gig[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    checkUser()
+    init()
   }, [])
 
-  const checkUser = async () => {
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+  const init = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
 
-      if (userError) throw userError
-
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-      if (profileError || !profileData) {
-        router.push('/onboarding')
-        return
-      }
-
-      if (profileData.user_type !== 'client' && profileData.user_type !== 'both') {
-        router.push('/dashboard/gig-seeker')
-        return
-      }
-
-      setProfile(profileData)
-
-      const { count } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('client_id', user.id)
-        .eq('status', 'pending')
-
-      setApplicationCount(count || 0)
-
-      await fetchSubscription(user.id)
-      await fetchGigs(user.id)
-
-      setLoading(false)
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
-      setLoading(false)
-    }
-  }
-
-  const fetchSubscription = async (userId: string) => {
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    setSubscription(data)
-  }
-
-  const fetchGigs = async (userId: string) => {
-    const { data } = await supabase
-      .from('gigs')
-      .select('*')
-      .eq('client_id', userId)
-      .order('created_at', { ascending: false })
-
-    setGigs(data || [])
-  }
-
-  const handleDeleteGig = async (gigId: number) => {
-    const confirmed = window.confirm('Delete this gig permanently?')
-    if (!confirmed) return
-
-    setDeletingGigId(gigId)
-
-    const { error } = await supabase.from('gigs').delete().eq('id', gigId)
-
-    if (error) {
-      alert('Failed to delete gig')
-      setDeletingGigId(null)
+    if (!user) {
+      router.push('/login')
       return
     }
 
-    setGigs((prev) => prev.filter((g) => g.id !== gigId))
-    setDeletingGigId(null)
+    setUserId(user.id)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', user.id)
+      .single()
+
+    if (profile?.user_type !== 'client' && profile?.user_type !== 'both') {
+      router.push('/dashboard/gig-seeker')
+      return
+    }
+
+    await Promise.all([
+      fetchSubscription(user.id),
+      fetchGigs(user.id)
+    ])
+
+    setLoading(false)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+  const fetchSubscription = async (uid: string) => {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('plan, gigs_allowed, expires_at')
+      .eq('user_id', uid)
+      .single()
+
+    if (data) setSubscription(data)
+  }
+
+  const fetchGigs = async (uid: string) => {
+    const { data } = await supabase
+      .from('gigs')
+      .select('id, gig_name, gig_type, payment_amount, created_at')
+      .eq('client_id', uid)
+      .order('created_at', { ascending: false })
+
+    if (data) setGigs(data)
   }
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      '⚠️ This will permanently delete your account and ALL associated data.'
+    const confirmed = confirm(
+      'This will permanently delete your account and all associated data. This cannot be undone. Are you sure?'
     )
-    if (!confirmed) return
+    if (!confirmed || !userId) return
 
-    setDeleting(true)
-    const { error } = await supabase.rpc('delete_my_account')
-
-    if (error) {
-      alert('Failed to delete account')
-      setDeleting(false)
-      return
-    }
-
+    await supabase.from('profiles').delete().eq('user_id', userId)
     await supabase.auth.signOut()
+
     router.push('/')
   }
 
-  const gigsAllowed =
-    subscription?.plan_name === 'professional'
-      ? '—'
-      : subscription?.gig_posts_left ?? '—'
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading dashboard...</div>
+      </div>
+    )
+  }
 
   const gigsPosted = gigs.length
-  const gigsRemaining =
-    subscription?.plan_name === 'professional'
-      ? '—'
-      : Math.max((subscription?.gig_posts_left ?? 0) - gigsPosted, 0)
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
-  }
-
-  if (error) {
-    return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>
-  }
+  const gigsAllowed = subscription?.gigs_allowed ?? 0
+  const gigsRemaining = Math.max(gigsAllowed - gigsPosted, 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* NAV */}
       <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-          <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold text-primary">B</span>
-            <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/dashboard/client" className="font-bold text-xl">
+            BaseGigs
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/pricing" className="px-4 py-2 bg-green-600 text-white rounded-lg">
-              Upgrade Plan
-            </Link>
-            <button onClick={handleLogout}>Logout</button>
-          </div>
+          <Link href="/dashboard/client/applications" className="text-gray-700 hover:text-primary">
+            View Applications
+          </Link>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
 
-        {/* Subscription Details */}
+        {/* SUBSCRIPTION CARD */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-4">Subscription Details</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div><strong>Plan</strong><br />{subscription?.plan_name || 'None'}</div>
-            <div><strong>Gigs Allowed</strong><br />{gigsAllowed}</div>
-            <div><strong>Gigs Posted</strong><br />{gigsPosted}</div>
-            <div><strong>Gigs Remaining</strong><br />{gigsRemaining}</div>
-            <div><strong>Expires</strong><br />{subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : '—'}</div>
-          </div>
+          <h2 className="text-2xl font-bold mb-4">Your Subscription</h2>
+
+          {subscription ? (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
+              <div><strong>Plan:</strong><br />{subscription.plan}</div>
+              <div><strong>Gigs Allowed:</strong><br />{gigsAllowed}</div>
+              <div><strong>Gigs Posted:</strong><br />{gigsPosted}</div>
+              <div><strong>Gigs Remaining:</strong><br />{gigsRemaining}</div>
+              <div>
+                <strong>Expires:</strong><br />
+                {subscription.expires_at
+                  ? new Date(subscription.expires_at).toLocaleDateString()
+                  : 'Never'}
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-600">No active subscription found.</p>
+          )}
         </div>
 
-        {/* Your Gigs */}
+        {/* YOUR GIGS */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-4">Your Gigs</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Your Gigs</h2>
+            <Link
+              href="/post-gig"
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600"
+            >
+              + Post New Gig
+            </Link>
+          </div>
 
           {gigs.length === 0 ? (
             <p className="text-gray-600">You haven’t posted any gigs yet.</p>
           ) : (
             <div className="space-y-4">
-              {gigs.map((gig) => (
-                <div key={gig.id} className="flex justify-between items-center border p-4 rounded-lg">
+              {gigs.map(gig => (
+                <div
+                  key={gig.id}
+                  className="border rounded-lg p-4 flex justify-between items-center"
+                >
                   <div>
-                    <h3 className="font-semibold">{gig.gig_name}</h3>
-                    <p className="text-sm text-gray-500">{gig.gig_type}</p>
+                    <div className="font-semibold">{gig.gig_name}</div>
+                    <div className="text-sm text-gray-600">
+                      {gig.gig_type} • R{gig.payment_amount}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteGig(gig.id)}
-                    disabled={deletingGigId === gig.id}
-                    className="p-3 bg-red-600 text-white rounded-full animate-pulse hover:bg-red-700"
+                  <Link
+                    href={`/dashboard/client/gigs/${gig.id}`}
+                    className="text-primary hover:underline"
                   >
-                    <Trash2 size={18} />
-                  </button>
+                    View
+                  </Link>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Client Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-4">Client Actions</h2>
+        {/* DELETE ACCOUNT */}
+        <div className="flex justify-end">
           <button
             onClick={handleDeleteAccount}
-            disabled={deleting}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg animate-pulse"
+            className="px-6 py-3 rounded-lg font-semibold text-white
+                       bg-red-600 hover:bg-red-700
+                       shadow-[0_0_20px_rgba(239,68,68,0.8)]
+                       animate-pulse"
           >
-            {deleting ? 'Deleting Account…' : 'Delete My Account'}
+            Delete Account
           </button>
         </div>
+
       </div>
     </div>
   )
