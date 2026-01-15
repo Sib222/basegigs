@@ -11,6 +11,7 @@ export default function ClientDashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [error, setError] = useState('')
   const [applicationCount, setApplicationCount] = useState(0)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     checkUser()
@@ -55,7 +56,6 @@ export default function ClientDashboard() {
 
       setProfile(profileData)
 
-      // Fetch application count
       const { count } = await supabase
         .from('applications')
         .select('*', { count: 'exact', head: true })
@@ -72,6 +72,27 @@ export default function ClientDashboard() {
   }
 
   const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      '⚠️ This will permanently delete your account and ALL associated data. This action cannot be undone.\n\nDo you want to continue?'
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+
+    const { error } = await supabase.rpc('delete_my_account')
+
+    if (error) {
+      alert('Failed to delete account. Please contact support.')
+      console.error(error)
+      setDeleting(false)
+      return
+    }
+
     await supabase.auth.signOut()
     router.push('/')
   }
@@ -161,6 +182,7 @@ export default function ClientDashboard() {
               <h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
               <p className="text-gray-600">View and manage all contracts</p>
             </Link>
+
             <Link
               href="/dashboard/client/applications"
               className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"
@@ -173,6 +195,7 @@ export default function ClientDashboard() {
                 </div>
               )}
             </Link>
+
             <Link
               href="/post-gig"
               className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
@@ -180,6 +203,7 @@ export default function ClientDashboard() {
               <h3 className="text-xl font-semibold mb-2">Post a Gig</h3>
               <p className="text-gray-600">Create a new gig listing to find talent</p>
             </Link>
+
             <Link
               href="/find-talent"
               className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
@@ -187,6 +211,7 @@ export default function ClientDashboard() {
               <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
               <p className="text-gray-600">Browse verified gig seekers</p>
             </Link>
+
             <Link
               href="/browse-gigs"
               className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
@@ -194,6 +219,17 @@ export default function ClientDashboard() {
               <h3 className="text-xl font-semibold mb-2">Browse Gigs</h3>
               <p className="text-gray-600">See what others are posting</p>
             </Link>
+
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className="p-6 border-2 border-red-600 bg-red-50 rounded-lg text-center hover:bg-red-100 animate-pulse"
+            >
+              <h3 className="text-xl font-semibold text-red-700 mb-2">
+                {deleting ? 'Deleting Account…' : 'Delete My Account'}
+              </h3>
+              <p className="text-red-600">Permanently remove your account and all data</p>
+            </button>
           </div>
         </div>
 
