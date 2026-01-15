@@ -11,6 +11,7 @@ export default function BothDashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [activeView, setActiveView] = useState<'client' | 'seeker'>('client')
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     checkUser()
@@ -62,6 +63,31 @@ export default function BothDashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleting) return
+    const confirmed = confirm(
+      'Are you absolutely sure you want to delete your account? This action cannot be undone.'
+    )
+    if (!confirmed) return
+
+    try {
+      setDeleting(true)
+      // Call the SQL function that cascades delete everything related to user
+      const { error } = await supabase.rpc('delete_my_account')
+      if (error) {
+        alert('Failed to delete account: ' + error.message)
+        setDeleting(false)
+        return
+      }
+      alert('Your account has been deleted successfully.')
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch (err: any) {
+      alert('An unexpected error occurred: ' + err.message)
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -176,6 +202,21 @@ export default function BothDashboard() {
                   <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
                   <p className="text-gray-600">Browse verified gig seekers</p>
                 </Link>
+              </div>
+
+              {/* DELETE ACCOUNT BUTTON */}
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="inline-block px-6 py-3 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 shadow-lg
+                    transition duration-300
+                    focus:outline-none focus:ring-4 focus:ring-red-400
+                    animate-pulse"
+                  style={{ boxShadow: '0 0 12px 4px rgba(220,38,38,0.8)' }}
+                >
+                  {deleting ? 'Deleting Account...' : 'Delete My Account'}
+                </button>
               </div>
             </div>
           </div>
