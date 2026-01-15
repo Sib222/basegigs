@@ -13,6 +13,7 @@ type Subscription = {
   user_id: string
   plan_name: string
   gig_posts_left: number | null
+  gigs_allowed: number | null
   expires_at: string
 }
 
@@ -62,7 +63,7 @@ export default function AdminPage() {
     // Fetch subscriptions separately
     const { data: subData, error: subError } = await supabase
       .from('subscriptions')
-      .select('user_id, plan_name, gig_posts_left, expires_at')
+      .select('user_id, plan_name, gig_posts_left, gigs_allowed, expires_at')
 
     if (subError) {
       console.error(subError)
@@ -90,10 +91,18 @@ export default function AdminPage() {
 
     const plan = PLANS[planKey]
 
+    // Set gigs_allowed based on plan, null means unlimited (professional)
+    const gigsAllowed = plan.gigs === null ? null : plan.gigs
+
+    // For professional plan, gig_posts_left should also be null (unlimited)
+    // For others, set gig_posts_left = gigs_allowed
+    const gigPostsLeft = gigsAllowed === null ? null : gigsAllowed
+
     await supabase.from('subscriptions').upsert({
       user_id: userId,
       plan_name: planKey,
-      gig_posts_left: plan.gigs,
+      gigs_allowed: gigsAllowed,
+      gig_posts_left: gigPostsLeft,
       activated_at: now.toISOString(),
       expires_at: expires.toISOString(),
     })
@@ -102,15 +111,11 @@ export default function AdminPage() {
   }
 
   const filtered = clients.filter((c) =>
-    `${c.full_name ?? ''} ${c.email ?? ''}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
+    `${c.full_name ?? ''} ${c.email ?? ''}`.toLowerCase().includes(search.toLowerCase())
   )
 
   function daysLeft(date: string) {
-    const diff = Math.ceil(
-      (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    )
+    const diff = Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     return diff > 0 ? diff : 0
   }
 
@@ -141,9 +146,7 @@ export default function AdminPage() {
             className="w-full p-2 border rounded mb-4"
             autoFocus
           />
-          {authError && (
-            <p className="text-red-600 mb-4 text-center">{authError}</p>
-          )}
+          {authError && <p className="text-red-600 mb-4 text-center">{authError}</p>}
           <button
             type="submit"
             className="w-full bg-primary text-white py-2 rounded hover:bg-green-600 transition"
@@ -200,7 +203,13 @@ export default function AdminPage() {
                   <td className="p-3 capitalize">
                     {sub ? sub.plan_name.replace('_', ' ') : 'No plan'}
                   </td>
-                  <td className="p-3">{sub?.gig_posts_left ?? '—'}</td>
+                  <td className="p-3">
+                    {sub
+                      ? sub.gigs_allowed === null
+                        ? '∞'
+                        : sub.gigs_allowed
+                      : '—'}
+                  </td>
                   <td className="p-3">{sub ? daysLeft(sub.expires_at) : '—'}</td>
                   <td className="p-3 space-x-2">
                     {(Object.keys(PLANS) as PlanKey[]).map((key) => (
