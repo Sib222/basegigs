@@ -245,9 +245,14 @@ export default function BothDashboard() {
 
   // Calculate gigs posted & remaining
   const gigsPosted = activeGigs.length
-  const gigsAllowed = subscription?.gigs_allowed ?? 0
+  const gigsAllowed =
+    subscription?.plan_name === 'professional'
+      ? 'Unlimited'
+      : subscription?.gigs_allowed ?? 0
   const gigsLeft = subscription ? subscription.gig_posts_left : 0
-  const expiresAt = subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : 'N/A'
+  const expiresAt = subscription?.expires_at
+    ? new Date(subscription.expires_at).toLocaleDateString()
+    : 'N/A'
 
   return (
     <div className="min-h-screen bg-gray-50">
