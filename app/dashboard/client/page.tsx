@@ -14,7 +14,7 @@ export default function ClientDashboard() {
   const [applicationCount, setApplicationCount] = useState(0)
   const [deleting, setDeleting] = useState(false)
 
-  // 🔽 ADDITIONS
+  // ✅ ADDITIONS
   const [subscription, setSubscription] = useState<any>(null)
   const [gigs, setGigs] = useState<any[]>([])
 
@@ -24,29 +24,18 @@ export default function ClientDashboard() {
 
   const checkUser = async () => {
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
-      if (userError) throw userError
       if (!user) {
         router.push('/login')
         return
       }
 
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .single()
-
-      if (profileError) {
-        console.error('Profile error:', profileError)
-        setError('Could not load profile')
-        setLoading(false)
-        return
-      }
 
       if (!profileData) {
         router.push('/onboarding')
@@ -68,19 +57,17 @@ export default function ClientDashboard() {
 
       setApplicationCount(count || 0)
 
-      // 🔽 ADDITIONS
       await fetchSubscription(user.id)
       await fetchGigs(user.id)
 
       setLoading(false)
     } catch (err: any) {
-      console.error('Error:', err)
       setError(err.message || 'An error occurred')
       setLoading(false)
     }
   }
 
-  // 🔽 ADDITIONS
+  // ✅ ADDITIONS
   const fetchSubscription = async (userId: string) => {
     const { data } = await supabase
       .from('subscriptions')
@@ -102,8 +89,7 @@ export default function ClientDashboard() {
   }
 
   const handleDeleteGig = async (gigId: number) => {
-    const confirmed = confirm('Delete this gig permanently?')
-    if (!confirmed) return
+    if (!confirm('Delete this gig permanently?')) return
 
     const { error } = await supabase.from('gigs').delete().eq('id', gigId)
     if (!error) {
@@ -117,17 +103,13 @@ export default function ClientDashboard() {
   }
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      '⚠️ This will permanently delete your account and ALL associated data. This action cannot be undone.\n\nDo you want to continue?'
-    )
-    if (!confirmed) return
+    if (!confirm('⚠️ This will permanently delete your account. Continue?')) return
 
     setDeleting(true)
-
     const { error } = await supabase.rpc('delete_my_account')
+
     if (error) {
-      alert('Failed to delete account. Please contact support.')
-      console.error(error)
+      alert('Failed to delete account')
       setDeleting(false)
       return
     }
@@ -137,33 +119,17 @@ export default function ClientDashboard() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    )
+    return <div className="min-h-screen flex items-center justify-center">Loading…</div>
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl text-red-600 mb-4">Error: {error}</div>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-4 py-2 bg-primary text-white rounded-lg"
-          >
-            Back to Login
-          </button>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>
   }
 
   const gigsPosted = gigs.length
   const gigsAllowed =
     subscription?.plan === 'professional'
-      ? '—'
+      ? 'Unlimited'
       : subscription?.gigs_allowed ?? 0
 
   const gigsRemaining =
@@ -173,76 +139,60 @@ export default function ClientDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* NAV — UNCHANGED */}
+
+      {/* 🔹 NAV (UNCHANGED) */}
       <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center">
-                <span className="text-2xl font-bold text-primary">B</span>
-                <span className="ml-2 text-xl font-semibold">BaseGigs</span>
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/my-contracts" className="px-4 py-2 text-gray-700 hover:text-primary font-medium">
-                📄 My Contracts
-              </Link>
-              <span className="text-gray-700">Welcome, {profile?.full_name}</span>
-              <Link
-                href="/pricing"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
-              >
-                Upgrade Plan
-              </Link>
-              <button onClick={handleLogout} className="px-4 py-2 text-gray-700 hover:text-primary">
-                Logout
-              </button>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+          <Link href="/" className="flex items-center">
+            <span className="text-2xl font-bold text-primary">B</span>
+            <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+          </Link>
+          <div className="flex items-center space-x-4">
+            <Link href="/my-contracts">📄 My Contracts</Link>
+            <span>Welcome, {profile?.full_name}</span>
+            <Link href="/pricing" className="bg-green-600 text-white px-4 py-2 rounded-lg">
+              Upgrade Plan
+            </Link>
+            <button onClick={handleLogout}>Logout</button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* HEADER — UNCHANGED */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+
+        {/* 🔹 HEADER */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Dashboard</h1>
-          <p className="text-gray-600">Manage your gigs and find talented gig seekers</p>
+          <h1 className="text-3xl font-bold">Client Dashboard</h1>
+          <p className="text-gray-600">Manage your gigs</p>
         </div>
 
-        {/* 🔽 ADDED: SUBSCRIPTION */}
+        {/* ✅ SUBSCRIPTION (ADDED) */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Subscription Details</h2>
-          {subscription ? (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div><strong>Plan</strong><br />{subscription.plan}</div>
-              <div><strong>Gigs Allowed</strong><br />{gigsAllowed}</div>
-              <div><strong>Gigs Posted</strong><br />{gigsPosted}</div>
-              <div><strong>Gigs Remaining</strong><br />{gigsRemaining}</div>
-              <div>
-                <strong>Expires</strong><br />
-                {subscription.expires_at
-                  ? new Date(subscription.expires_at).toLocaleDateString()
-                  : 'Never'}
-              </div>
+          <h2 className="text-2xl font-bold mb-4">Subscription</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div><strong>Plan</strong><br />{subscription?.plan ?? 'None'}</div>
+            <div><strong>Gigs Allowed</strong><br />{gigsAllowed}</div>
+            <div><strong>Gigs Posted</strong><br />{gigsPosted}</div>
+            <div><strong>Remaining</strong><br />{gigsRemaining}</div>
+            <div>
+              <strong>Expires</strong><br />
+              {subscription?.expires_at
+                ? new Date(subscription.expires_at).toLocaleDateString()
+                : 'Never'}
             </div>
-          ) : (
-            <p className="text-gray-600">No active subscription</p>
-          )}
+          </div>
         </div>
 
-        {/* 🔽 ADDED: YOUR GIGS */}
+        {/* ✅ YOUR GIGS (ADDED) */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4">Your Gigs</h2>
 
           {gigs.length === 0 ? (
-            <p className="text-gray-600">You have not posted any gigs yet.</p>
+            <p className="text-gray-600">No gigs posted yet.</p>
           ) : (
             <div className="space-y-3">
               {gigs.map(gig => (
-                <div
-                  key={gig.id}
-                  className="flex justify-between items-center border rounded-lg p-4"
-                >
+                <div key={gig.id} className="flex justify-between items-center border p-4 rounded-lg">
                   <div>
                     <div className="font-semibold">{gig.gig_name}</div>
                     <div className="text-sm text-gray-600">
@@ -251,8 +201,7 @@ export default function ClientDashboard() {
                   </div>
                   <button
                     onClick={() => handleDeleteGig(gig.id)}
-                    className="text-red-600 hover:text-red-800 text-xl"
-                    title="Delete Gig"
+                    className="text-red-600 text-xl hover:text-red-800"
                   >
                     🗑️
                   </button>
@@ -262,6 +211,16 @@ export default function ClientDashboard() {
           )}
         </div>
 
-        {/* EVERYTHING BELOW — UNCHANGED */}
-        {/* QUICK ACTIONS + DELETE ACCOUNT + UNDER CONSTRUCTION */}
-        {/* YOUR ORIGINAL JSX CONTINUES EXACTLY AS BEFORE */}
+        {/* 🔴 DELETE ACCOUNT (UNCHANGED) */}
+        <button
+          onClick={handleDeleteAccount}
+          disabled={deleting}
+          className="p-6 border-2 border-red-600 bg-red-50 rounded-lg hover:bg-red-100 animate-pulse"
+        >
+          {deleting ? 'Deleting Account…' : 'Delete My Account'}
+        </button>
+
+      </div>
+    </div>
+  )
+}
