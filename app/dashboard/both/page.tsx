@@ -5,19 +5,47 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+interface Gig {
+  id: number
+  client_id: string
+  client_name: string
+  gig_name: string
+  gig_type: string
+  city: string
+  province: string
+  explanation: string
+  requirements: string
+  payment_amount: number
+  payment_type: string
+  skills: string[]
+  deadline: string
+  status: string
+  applicant_count: number
+  created_at: string
+  expires_at: string
+  deleted_at: string | null
+}
+
 export default function BothDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
-  const [subscription, setSubscription] = useState<any>(null)
   const [activeView, setActiveView] = useState<'client' | 'seeker'>('client')
   const [error, setError] = useState('')
-  const [deleting, setDeleting] = useState(false)
-  const [activeGigsCount, setActiveGigsCount] = useState(0)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [clientGigs, setClientGigs] = useState<Gig[]>([])
+  const [loadingGigs, setLoadingGigs] = useState(false)
+  const [deletingGigId, setDeletingGigId] = useState<number | null>(null)
 
   useEffect(() => {
     checkUser()
   }, [])
+
+  useEffect(() => {
+    if (profile && activeView === 'client') {
+      fetchClientGigs()
+    }
+  }, [profile, activeView])
 
   const checkUser = async () => {
     try {
@@ -30,7 +58,6 @@ export default function BothDashboard() {
         router.push('/login')
         return
       }
-      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -55,37 +82,55 @@ export default function BothDashboard() {
         return
       }
       setProfile(profileData)
-
-      // Fetch subscription info for user
-      const { data: subData, error: subError } = await supabase
-        .from('subscriptions')
-        .select('plan_name, gig_posts_left, gigs_allowed, expires_at')
-        .eq('user_id', user.id)
-        .single()
-      if (subError) {
-        console.error('Subscription error:', subError)
-        // Not fatal, continue
-      } else {
-        setSubscription(subData)
-      }
-
-      // Fetch active gigs count (not deleted)
-      const { data: gigsData, error: gigsError } = await supabase
-        .from('gigs')
-        .select('id', { count: 'exact' })
-        .eq('client_id', user.id)
-        .is('deleted_at', null)
-      if (gigsError) {
-        console.error('Gigs fetch error:', gigsError)
-      } else {
-        setActiveGigsCount(gigsData?.length || 0)
-      }
-
       setLoading(false)
     } catch (err: any) {
       console.error('Error:', err)
       setError(err.message || 'An error occurred')
       setLoading(false)
+    }
+  }
+
+  const fetchClientGigs = async () => {
+    setLoadingGigs(true)
+    try {
+      const { data, error } = await supabase
+        .from('gigs')
+        .select('*')
+        .eq('client_id', profile.user_id)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setClientGigs(data || [])
+    } catch (err) {
+      console.error('Error fetching client gigs:', err)
+    } finally {
+      setLoadingGigs(false)
+    }
+  }
+
+  const handleDeleteGig = async (gigId: number) => {
+    if (deletingGigId !== null) return
+    const confirmed = confirm('Are you sure you want to delete this gig? This action cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      setDeletingGigId(gigId)
+      const { error } = await supabase
+        .from('gigs')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', gigId)
+        .eq('client_id', profile.user_id)
+      if (error) {
+        alert('Failed to delete gig: ' + error.message)
+        setDeletingGigId(null)
+        return
+      }
+      alert('Gig deleted successfully.')
+      fetchClientGigs()
+    } catch (err: any) {
+      alert('Unexpected error: ' + err.message)
+    } finally {
+      setDeletingGigId(null)
     }
   }
 
@@ -95,19 +140,19 @@ export default function BothDashboard() {
   }
 
   const handleDeleteAccount = async () => {
-    if (deleting) return
+    if (deletingAccount) return
     const confirmed = confirm(
       'Are you absolutely sure you want to delete your account? This action cannot be undone.'
     )
     if (!confirmed) return
 
     try {
-      setDeleting(true)
+      setDeletingAccount(true)
       // Call the SQL function that cascades delete everything related to user
       const { error } = await supabase.rpc('delete_my_account')
       if (error) {
         alert('Failed to delete account: ' + error.message)
-        setDeleting(false)
+        setDeletingAccount(false)
         return
       }
       alert('Your account has been deleted successfully.')
@@ -115,7 +160,7 @@ export default function BothDashboard() {
       router.push('/')
     } catch (err: any) {
       alert('An unexpected error occurred: ' + err.message)
-      setDeleting(false)
+      setDeletingAccount(false)
     }
   }
 
@@ -190,12 +235,14 @@ export default function BothDashboard() {
             Gig Seeker View
           </button>
         </div>
+
+        {/* CLIENT VIEW */}
         {activeView === 'client' && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Active Gigs</h3>
-                <p className="text-3xl font-bold text-primary">{activeGigsCount}</p>
+                <p className="text-3xl font-bold text-primary">{clientGigs.length}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Total Applications</h3>
@@ -206,30 +253,75 @@ export default function BothDashboard() {
                 <p className="text-3xl font-bold text-primary">0</p>
               </div>
             </div>
-            {/* SUBSCRIPTION INFO */}
-            {subscription ? (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h3 className="text-lg font-semibold mb-2">Subscription Details</h3>
-                <p>
-                  <strong>Plan:</strong> {subscription.plan_name}
-                </p>
-                <p>
-                  <strong>Gigs Posted:</strong>{' '}
-                  {subscription.gigs_allowed - subscription.gig_posts_left} / {subscription.gigs_allowed}
-                </p>
-                <p>
-                  <strong>Gigs Remaining:</strong> {subscription.gig_posts_left}
-                </p>
-                <p>
-                  <strong>Expires At:</strong> {subscription.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : 'N/A'}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h3 className="text-lg font-semibold mb-2">Subscription Details</h3>
-                <p>No subscription data available.</p>
-              </div>
-            )}
+
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h2 className="text-2xl font-bold mb-6">Your Gigs</h2>
+              {loadingGigs ? (
+                <p>Loading your gigs...</p>
+              ) : clientGigs.length === 0 ? (
+                <p className="text-gray-600">No active gigs at the moment.</p>
+              ) : (
+                <div className="space-y-4">
+                  {clientGigs.map((gig) => (
+                    <div key={gig.id} className="border rounded-lg p-4 flex justify-between items-center bg-gray-50">
+                      <div>
+                        <h3 className="text-lg font-semibold">{gig.gig_name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {gig.gig_type} — {gig.city}, {gig.province}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteGig(gig.id)}
+                        disabled={deletingGigId === gig.id}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        title="Delete Gig"
+                        aria-label={`Delete gig ${gig.gig_name}`}
+                      >
+                        {deletingGigId === gig.id ? (
+                          <svg
+                            className="animate-spin h-6 w-6"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8H4z"
+                            ></path>
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor"
+                            className="w-6 h-6"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-2xl font-bold mb-6">Client Actions</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -261,19 +353,21 @@ export default function BothDashboard() {
               <div className="mt-8 text-center">
                 <button
                   onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  disabled={deletingAccount}
                   className="inline-block px-6 py-3 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 shadow-lg
                     transition duration-300
                     focus:outline-none focus:ring-4 focus:ring-red-400
                     animate-pulse"
                   style={{ boxShadow: '0 0 12px 4px rgba(220,38,38,0.8)' }}
                 >
-                  {deleting ? 'Deleting Account...' : 'Delete My Account'}
+                  {deletingAccount ? 'Deleting Account...' : 'Delete My Account'}
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* SEEKER VIEW */}
         {activeView === 'seeker' && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
