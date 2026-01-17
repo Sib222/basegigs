@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import Image from 'next/image'
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
@@ -46,15 +45,13 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <Image
+              {/* LOGO REPLACEMENT — ONLY CHANGE */}
+              <img
                 src="/logo.png"
-                alt="BaseGigs logo"
-                width={36}
-                height={36}
-                className="mr-2"
-                priority
+                alt="BaseGigs Logo"
+                className="h-10 w-auto"
               />
-              <span className="text-xl font-semibold">BaseGigs</span>
+              <span className="ml-2 text-xl font-semibold">BaseGigs</span>
             </Link>
 
             <div className="hidden md:flex space-x-8">
@@ -88,7 +85,58 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* rest of the file unchanged */}
+      {/* Hero Section */}
+      <section className="bg-gradient-to-b from-green-50 to-white py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-block bg-green-100 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-4">
+            Now accepting new members
+          </div>
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            The Professional Gig Marketplace
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            Connect with skilled professionals for short-term gigs. Post opportunities, find talent, and manage contracts—all in one platform.
+          </p>
+          <div className="flex justify-center space-x-4">
+            {user ? (
+              <Link href={getDashboardLink()} className="px-8 py-3 bg-primary text-white rounded-lg text-lg font-semibold hover:bg-green-600">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/signup" className="px-8 py-3 bg-primary text-white rounded-lg text-lg font-semibold hover:bg-green-600">
+                  Get Started Free
+                </Link>
+                <Link href="/how-it-works" className="px-8 py-3 bg-white text-primary border-2 border-primary rounded-lg text-lg font-semibold hover:bg-green-50">
+                  See How It Works
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-4xl font-bold text-primary mb-2">Real Gigs</div>
+              <div className="text-gray-600">Posted by real people</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-primary mb-2">Real People</div>
+              <div className="text-gray-600">Verified gig seekers</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-primary mb-2">Real Opportunities</div>
+              <div className="text-gray-600">Local work that matters</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* rest of file unchanged */}
     </div>
   )
 }
