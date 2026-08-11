@@ -602,7 +602,7 @@ className="w-full h-full object-cover"
 {selectedSeeker.portfolio_url && (
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">Portfolio</h4>
-
+<a
 href={selectedSeeker.portfolio_url}
 target="_blank"
 rel="noopener noreferrer"
@@ -618,7 +618,7 @@ className="text-blue-600 hover:underline"
 <h4 className="text-lg font-bold mb-2">Supporting Documents</h4>
 <div className="space-y-2">
 {selectedSeeker.documents.map((doc, idx) => (
-
+<a
 key={idx}
 href={getDocumentUrl(doc)}
 target="_blank"
