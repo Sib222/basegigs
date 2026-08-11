@@ -390,7 +390,7 @@ function ClientApplicationsContent() {
                         </h3>
                         <div className="space-y-2">
                           {app.gig_seeker_profiles.documents.map((doc, idx) => (
-                            
+                            <a
                               key={idx}
                               href={getDocumentUrl(doc)}
                               target="_blank"
