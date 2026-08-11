@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface GigSeeker {
@@ -22,7 +23,8 @@ travel_distance: string | null
 portfolio_url: string | null
 }
 
-export default function FindTalentPage() {
+function FindTalentContent() {
+const searchParams = useSearchParams()
 const [seekers, setSeekers] = useState<GigSeeker[]>([])
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
@@ -78,6 +80,14 @@ useEffect(() => {
 checkUser()
 fetchSeekers()
 }, [])
+
+// Auto-open a specific seeker's profile if ?seekerId= is present in the URL
+useEffect(() => {
+const seekerId = searchParams.get('seekerId')
+if (seekerId) {
+openProfileById(seekerId)
+}
+}, [searchParams])
 
 const checkUser = async () => {
 const { data: { user } } = await supabase.auth.getUser()
@@ -137,6 +147,51 @@ setSeekers(enrichedData as any)
 console.error('Error fetching seekers:', error)
 } finally {
 setLoading(false)
+}
+}
+
+// Fetches a single seeker directly by user_id, regardless of verified status,
+// and opens their profile modal. Used when arriving via /find-talent?seekerId=...
+const openProfileById = async (seekerId: string) => {
+try {
+const { data: seekerData, error } = await supabase
+.from('gig_seeker_profiles')
+.select(`
+user_id,
+background_story,
+gig_services,
+education_level,
+experience,
+years_of_experience,
+availability,
+expected_hourly_rate,
+verified,
+photo_url,
+documents,
+languages,
+travel_distance,
+portfolio_url
+`)
+.eq('user_id', seekerId)
+.single()
+
+if (error || !seekerData) {
+console.error('Error fetching seeker profile by id:', error)
+alert('Could not load this profile. It may no longer exist.')
+return
+}
+
+const { data: profile } = await supabase
+.from('profiles')
+.select('full_name, age, gender, city, province, has_car')
+.eq('user_id', seekerId)
+.single()
+
+const fullSeeker = { ...seekerData, profiles: profile } as GigSeeker
+setSelectedSeeker(fullSeeker)
+setShowModal(true)
+} catch (err) {
+console.error('Error opening profile by id:', err)
 }
 }
 
@@ -479,6 +534,11 @@ className="w-full h-full object-cover"
 {selectedSeeker.languages && <div>🗣️ Languages: {selectedSeeker.languages}</div>}
 {selectedSeeker.travel_distance && <div>🚶 Travel: {selectedSeeker.travel_distance}</div>}
 </div>
+{!selectedSeeker.verified && (
+<div className="mt-2 inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+⏳ Not yet verified
+</div>
+)}
 </div>
 </div>
 
@@ -542,7 +602,7 @@ className="w-full h-full object-cover"
 {selectedSeeker.portfolio_url && (
 <div className="mb-6">
 <h4 className="text-lg font-bold mb-2">Portfolio</h4>
-<a
+
 href={selectedSeeker.portfolio_url}
 target="_blank"
 rel="noopener noreferrer"
@@ -558,7 +618,7 @@ className="text-blue-600 hover:underline"
 <h4 className="text-lg font-bold mb-2">Supporting Documents</h4>
 <div className="space-y-2">
 {selectedSeeker.documents.map((doc, idx) => (
-<a
+
 key={idx}
 href={getDocumentUrl(doc)}
 target="_blank"
@@ -640,5 +700,17 @@ className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-
 </div>
 )}
 </div>
+)
+}
+
+export default function FindTalentPage() {
+return (
+<Suspense fallback={
+<div className="min-h-screen flex items-center justify-center">
+<div className="text-xl">Loading talent...</div>
+</div>
+}>
+<FindTalentContent />
+</Suspense>
 )
 }
