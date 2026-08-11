@@ -67,12 +67,13 @@ export default function ClientDashboard() {
         setSubscription(subsData)
       }
 
-      // Fetch active gigs
+      // Fetch active gigs — not deleted AND not expired
       const { data: gigsData, error: gigsError } = await supabase
         .from('gigs')
         .select('*')
         .eq('client_id', user.id)
         .is('deleted_at', null)
+        .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
 
       if (gigsError) {
@@ -213,10 +214,16 @@ export default function ClientDashboard() {
             <h3 className="text-lg font-semibold mb-2">Active Gigs</h3>
             <p className="text-3xl font-bold text-primary">{activeGigs.length}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+
+          <Link
+            href="/dashboard/client/applications?status=pending"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:ring-2 hover:ring-primary transition cursor-pointer block"
+          >
             <h3 className="text-lg font-semibold mb-2">Pending Applications</h3>
             <p className="text-3xl font-bold text-primary">{applicationCount}</p>
-          </div>
+            <p className="text-xs text-gray-500 mt-1">Click to view applicants →</p>
+          </Link>
+
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-2">Hired Seekers</h3>
             <p className="text-3xl font-bold text-primary">0</p>
