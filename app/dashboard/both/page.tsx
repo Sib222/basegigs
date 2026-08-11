@@ -104,12 +104,13 @@ export default function BothDashboard() {
         setSubscription(subsData)
       }
 
-      // Fetch active gigs (not deleted)
+      // Fetch active gigs (not deleted, not expired)
       const { data: gigsData, error: gigsError } = await supabase
         .from('gigs')
         .select('*')
         .eq('client_id', user.id)
         .is('deleted_at', null)
+        .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
 
       if (gigsError) {
@@ -119,47 +120,39 @@ export default function BothDashboard() {
         setActiveGigs(gigsData || [])
       }
 
-      // Fetch total applications count for client's gigs
-      const { data: appCountData, error: appCountError } = await supabase
+      // Get active (non-deleted, non-expired) gig IDs for stats below
+      const { data: activeGigIdsData } = await supabase
+        .from('gigs')
+        .select('id')
+        .eq('client_id', user.id)
+        .is('deleted_at', null)
+        .gt('expires_at', new Date().toISOString())
+
+      const activeGigIds = activeGigIdsData?.map((g) => g.id) || []
+
+      // Fetch total applications count for client's active gigs
+      const { count: appCount, error: appCountError } = await supabase
         .from('applications')
         .select('id', { count: 'exact', head: true })
-        .in(
-          'gig_id',
-          (
-            await supabase
-              .from('gigs')
-              .select('id')
-              .eq('client_id', user.id)
-              .is('deleted_at', null)
-          ).data?.map((g) => g.id) || []
-        )
+        .in('gig_id', activeGigIds.length ? activeGigIds : [-1])
       if (appCountError) {
         console.error('Applications count error:', appCountError)
         setError('Could not load applications count')
       } else {
-        setTotalApplications(appCountData?.length || 0)
+        setTotalApplications(appCount || 0)
       }
 
       // Fetch hired seekers count (applications with status 'hired')
-      const { data: hiredData, error: hiredError } = await supabase
+      const { count: hiredCount, error: hiredError } = await supabase
         .from('applications')
         .select('id', { count: 'exact', head: true })
-        .in(
-          'gig_id',
-          (
-            await supabase
-              .from('gigs')
-              .select('id')
-              .eq('client_id', user.id)
-              .is('deleted_at', null)
-          ).data?.map((g) => g.id) || []
-        )
+        .in('gig_id', activeGigIds.length ? activeGigIds : [-1])
         .eq('status', 'hired')
       if (hiredError) {
         console.error('Hired seekers count error:', hiredError)
         setError('Could not load hired seekers count')
       } else {
-        setHiredSeekers(hiredData?.length || 0)
+        setHiredSeekers(hiredCount || 0)
       }
 
       setLoading(false)
@@ -314,10 +307,16 @@ export default function BothDashboard() {
                 <h3 className="text-lg font-semibold mb-2">Active Gigs</h3>
                 <p className="text-3xl font-bold text-primary">{activeGigs.length}</p>
               </div>
-              <div className="bg-white rounded-lg shadow p-6">
+
+              <Link
+                href="/dashboard/client/applications"
+                className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:ring-2 hover:ring-primary transition cursor-pointer block"
+              >
                 <h3 className="text-lg font-semibold mb-2">Total Applications</h3>
                 <p className="text-3xl font-bold text-primary">{totalApplications}</p>
-              </div>
+                <p className="text-xs text-gray-500 mt-1">Click to view applicants →</p>
+              </Link>
+
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Hired Seekers</h3>
                 <p className="text-3xl font-bold text-primary">{hiredSeekers}</p>
@@ -479,3 +478,4 @@ export default function BothDashboard() {
     </div>
   )
 }
+  
