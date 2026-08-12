@@ -11,6 +11,9 @@ export default function GigSeekerDashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [acceptedCount, setAcceptedCount] = useState(0)
+  const [hasNotification, setHasNotification] = useState(false)
 
   useEffect(() => {
     checkUser()
@@ -54,6 +57,32 @@ export default function GigSeekerDashboard() {
       }
 
       setProfile(profileData)
+
+      // Applications pending
+      const { count: pending } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('status', 'pending')
+
+      // Accepted applications
+      const { count: accepted } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('status', 'accepted')
+
+      // Unseen status changes (client accepted/declined and seeker hasn't viewed yet)
+      const { count: unseen } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('seeker_seen', false)
+
+      setPendingCount(pending || 0)
+      setAcceptedCount(accepted || 0)
+      setHasNotification((unseen || 0) > 0)
+
       setLoading(false)
     } catch (err: any) {
       console.error('Error:', err)
@@ -145,11 +174,11 @@ export default function GigSeekerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-2">Applications Pending</h3>
-            <p className="text-3xl font-bold text-primary">0</p>
+            <p className="text-3xl font-bold text-primary">{pendingCount}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-2">Accepted Applications</h3>
-            <p className="text-3xl font-bold text-primary">0</p>
+            <p className="text-3xl font-bold text-primary">{acceptedCount}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-2">Completed Gigs</h3>
@@ -189,8 +218,14 @@ export default function GigSeekerDashboard() {
 
             <Link
               href="/dashboard/gig-seeker/applications"
-              className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+              className="relative p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
             >
+              {hasNotification && (
+                <span
+                  className="absolute top-3 right-3 w-3.5 h-3.5 bg-blue-500 rounded-full ring-2 ring-white"
+                  title="You have application updates"
+                ></span>
+              )}
               <h3 className="text-xl font-semibold mb-2">My Applications</h3>
               <p className="text-gray-600">View all your gig applications</p>
             </Link>
@@ -221,14 +256,6 @@ export default function GigSeekerDashboard() {
           <p className="text-green-800">
             Apply to unlimited gigs, chat with clients, and sign contracts at no cost.
             We&apos;re here to help you find opportunities!
-          </p>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">🚧 Dashboard Under Construction</h3>
-          <p className="text-blue-800">
-            We&apos;re building out the full dashboard features. For now, you can browse and apply to gigs.
-            Application tracking coming soon!
           </p>
         </div>
       </div>
