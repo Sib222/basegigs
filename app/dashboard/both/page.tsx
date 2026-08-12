@@ -41,11 +41,16 @@ export default function BothDashboard() {
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  // Data states
+  // Client-side data states
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [activeGigs, setActiveGigs] = useState<Gig[]>([])
   const [totalApplications, setTotalApplications] = useState(0)
   const [hiredSeekers, setHiredSeekers] = useState(0)
+
+  // Seeker-side data states
+  const [seekerPendingCount, setSeekerPendingCount] = useState(0)
+  const [seekerAcceptedCount, setSeekerAcceptedCount] = useState(0)
+  const [seekerHasNotification, setSeekerHasNotification] = useState(false)
 
   useEffect(() => {
     checkUser()
@@ -120,7 +125,7 @@ export default function BothDashboard() {
         setActiveGigs(gigsData || [])
       }
 
-      // Get active (non-deleted, non-expired) gig IDs for stats below
+      // Get active (non-deleted, non-expired) gig IDs for client stats below
       const { data: activeGigIdsData } = await supabase
         .from('gigs')
         .select('id')
@@ -154,6 +159,29 @@ export default function BothDashboard() {
       } else {
         setHiredSeekers(hiredCount || 0)
       }
+
+      // Seeker-side: applications this user has submitted to other clients' gigs
+      const { count: seekerPending } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('status', 'pending')
+
+      const { count: seekerAccepted } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('status', 'accepted')
+
+      const { count: seekerUnseen } = await supabase
+        .from('applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('gig_seeker_id', user.id)
+        .eq('seeker_seen', false)
+
+      setSeekerPendingCount(seekerPending || 0)
+      setSeekerAcceptedCount(seekerAccepted || 0)
+      setSeekerHasNotification((seekerUnseen || 0) > 0)
 
       setLoading(false)
     } catch (err: any) {
@@ -292,11 +320,14 @@ export default function BothDashboard() {
           </button>
           <button
             onClick={() => setActiveView('seeker')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+            className={`relative px-6 py-2 rounded-lg font-semibold transition-colors ${
               activeView === 'seeker' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
             Gig Seeker View
+            {seekerHasNotification && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white"></span>
+            )}
           </button>
         </div>
 
@@ -427,11 +458,11 @@ export default function BothDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Applications Pending</h3>
-                <p className="text-3xl font-bold text-primary">0</p>
+                <p className="text-3xl font-bold text-primary">{seekerPendingCount}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Accepted Applications</h3>
-                <p className="text-3xl font-bold text-primary">0</p>
+                <p className="text-3xl font-bold text-primary">{seekerAcceptedCount}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-2">Completed Gigs</h3>
@@ -440,7 +471,7 @@ export default function BothDashboard() {
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-2xl font-bold mb-6">Gig Seeker Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                   href="/my-contracts"
                   className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center"
@@ -463,19 +494,24 @@ export default function BothDashboard() {
                   <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
                   <p className="text-gray-600">Browse verified gig seekers</p>
                 </Link>
+                <Link
+                  href="/dashboard/gig-seeker/applications"
+                  className="relative p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+                >
+                  {seekerHasNotification && (
+                    <span
+                      className="absolute top-3 right-3 w-3.5 h-3.5 bg-blue-500 rounded-full ring-2 ring-white"
+                      title="You have application updates"
+                    ></span>
+                  )}
+                  <h3 className="text-xl font-semibold mb-2">My Applications</h3>
+                  <p className="text-gray-600">View all your gig applications</p>
+                </Link>
               </div>
             </div>
           </div>
         )}
-
-        {/* Dashboard under construction note */}
-        <div className="mt-12 p-6 bg-yellow-50 border border-yellow-300 rounded text-yellow-700 text-center font-semibold">
-          🚧 Dashboard Under Construction
-          <br />
-          Full dashboard features are being built. You can browse gigs and find talent now. More functionality coming soon!
-        </div>
       </div>
     </div>
   )
 }
-  
