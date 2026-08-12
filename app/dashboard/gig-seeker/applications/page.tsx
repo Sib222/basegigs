@@ -53,6 +53,10 @@ return
 
 setCurrentUser(user)
 await fetchApplications(user.id)
+
+// Mark any pending status-change notifications as seen now that
+// the seeker has opened this page
+await supabase.rpc('mark_applications_seen')
 }
 
 const fetchApplications = async (userId: string) => {
