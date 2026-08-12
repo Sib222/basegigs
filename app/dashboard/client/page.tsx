@@ -286,7 +286,7 @@ export default function ClientDashboard() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-6">Client Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Link
               href="/my-contracts"
               className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center"
@@ -315,6 +315,13 @@ export default function ClientDashboard() {
             >
               <h3 className="text-xl font-semibold mb-2">Browse Gigs</h3>
               <p className="text-gray-600">See what others are posting</p>
+            </Link>
+            <Link
+              href="/dashboard/client/profile"
+              className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+            >
+              <h3 className="text-xl font-semibold mb-2">Edit Profile</h3>
+              <p className="text-gray-600">Update your info and photo</p>
             </Link>
           </div>
 
