@@ -413,7 +413,10 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 </div>
 
 <div className="mt-3 text-xs text-gray-500">
-Posted by: {gig.client_name}
+Posted by:{' '}
+<Link href={`/client/${gig.client_id}`} className="text-primary hover:underline font-medium">
+{gig.client_name}
+</Link>
 </div>
 </div>
 )
