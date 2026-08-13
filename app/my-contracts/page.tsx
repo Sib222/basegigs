@@ -54,13 +54,13 @@ client_signed_at,
 seeker_signed_at,
 fully_executed_at,
 created_at,
+contract_payment_amount,
+contract_payment_type,
 applications (
 id,
 gigs (
 gig_name,
 gig_type,
-payment_amount,
-payment_type,
 city,
 province
 )
@@ -213,6 +213,11 @@ const userHasSigned = isClient
 ? contract.client_signed_at
 : contract.seeker_signed_at
 
+// Use the contract's own negotiated terms, falling back to the
+// original gig listing only for very old contracts pre-dating this
+const paymentAmount = contract.contract_payment_amount ?? null
+const paymentType = contract.contract_payment_type ?? null
+
 return (
 <div key={contract.id} className="bg-white rounded-lg shadow hover:shadow-md transition p-6">
 <div className="flex items-start justify-between">
@@ -230,7 +235,12 @@ return (
 <div>
 <p><strong>Category:</strong> {gig?.gig_type}</p>
 <p><strong>Location:</strong> {gig?.city}, {gig?.province}</p>
-<p><strong>Payment:</strong> R{gig?.payment_amount?.toLocaleString()} ({gig?.payment_type})</p>
+<p>
+<strong>Payment:</strong>{' '}
+{paymentAmount !== null
+? `R${Number(paymentAmount).toLocaleString()} (${paymentType})`
+: 'See contract'}
+</p>
 </div>
 <div>
 <p><strong>{isClient ? 'Service Provider' : 'Client'}:</strong> {otherPartyName}</p>
