@@ -10,11 +10,16 @@ const router = useRouter()
 const [loading, setLoading] = useState(true)
 const [signing, setSigning] = useState(false)
 const [currentUser, setCurrentUser] = useState<any>(null)
-const [contractData, setContractData] = useState<any>(null)
+const [gig, setGig] = useState<any>(null)
 const [contract, setContract] = useState<any>(null)
+
 const [showChangeModal, setShowChangeModal] = useState(false)
-const [changeRequest, setChangeRequest] = useState('')
 const [submittingChange, setSubmittingChange] = useState(false)
+const [proposedAmount, setProposedAmount] = useState('')
+const [proposedType, setProposedType] = useState('Fixed')
+const [proposedDescription, setProposedDescription] = useState('')
+const [proposedRequirements, setProposedRequirements] = useState('')
+const [proposedNote, setProposedNote] = useState('')
 
 const applicationId = parseInt(params.applicationId)
 
@@ -30,7 +35,6 @@ router.push('/login')
 return
 }
 
-// Get the profile to get the correct user_id
 const { data: profile } = await supabase
 .from('profiles')
 .select('id, user_id')
@@ -51,12 +55,7 @@ const fetchContractData = async (userId: string) => {
 try {
 const { data: application, error: appError } = await supabase
 .from('applications')
-.select(`
-id,
-gig_seeker_id,
-client_id,
-gig_id
-`)
+.select('id, gig_seeker_id, client_id, gig_id')
 .eq('id', applicationId)
 .single()
 
@@ -74,40 +73,18 @@ router.push('/dashboard')
 return
 }
 
-// Fetch gig details
-const { data: gig, error: gigError } = await supabase
+// Fetch gig details (name, category, location stay tied to the live listing —
+// these identify which gig the contract is for and aren't negotiable)
+const { data: gigData, error: gigError } = await supabase
 .from('gigs')
 .select('*')
 .eq('id', application.gig_id)
 .single()
 
 if (gigError) throw gigError
+setGig(gigData)
 
-// Fetch gig seeker profile
-const { data: seekerProfile, error: seekerError } = await supabase
-.from('profiles')
-.select('full_name, phone_number, email')
-.eq('user_id', application.gig_seeker_id)
-.single()
-
-if (seekerError) throw seekerError
-
-// Fetch client profile
-const { data: clientProfile, error: clientError } = await supabase
-.from('profiles')
-.select('full_name, phone_number, email')
-.eq('user_id', application.client_id)
-.single()
-
-if (clientError) throw clientError
-
-setContractData({
-...application,
-gigs: gig,
-profiles: seekerProfile,
-client_profiles: clientProfile
-})
-
+// Check for an existing contract first
 const { data: existingContract, error: contractError } = await supabase
 .from('contracts')
 .select('*')
@@ -121,12 +98,41 @@ throw contractError
 if (existingContract) {
 setContract(existingContract)
 } else {
+// No contract yet — snapshot both parties' contact info and the gig's
+// current terms into a brand new contract record
+const { data: seekerProfile, error: seekerError } = await supabase
+.from('profiles')
+.select('full_name, phone_number, email')
+.eq('user_id', application.gig_seeker_id)
+.single()
+
+if (seekerError) throw seekerError
+
+const { data: clientProfile, error: clientError } = await supabase
+.from('profiles')
+.select('full_name, phone_number, email')
+.eq('user_id', application.client_id)
+.single()
+
+if (clientError) throw clientError
+
 const { data: newContract, error: createError } = await supabase
 .from('contracts')
 .insert({
 application_id: applicationId,
 client_id: application.client_id,
-gig_seeker_id: application.gig_seeker_id
+gig_seeker_id: application.gig_seeker_id,
+client_full_name: clientProfile.full_name,
+client_email: clientProfile.email,
+client_phone: clientProfile.phone_number,
+seeker_full_name: seekerProfile.full_name,
+seeker_email: seekerProfile.email,
+seeker_phone: seekerProfile.phone_number,
+contract_payment_amount: gigData.payment_amount,
+contract_payment_type: gigData.payment_type,
+contract_description: gigData.explanation,
+contract_requirements: gigData.requirements,
+contract_version: 1,
 })
 .select()
 .single()
@@ -134,7 +140,6 @@ gig_seeker_id: application.gig_seeker_id
 if (createError) throw createError
 setContract(newContract)
 }
-
 } catch (error: any) {
 console.error('Error fetching contract data:', error)
 alert('Error loading contract: ' + error.message)
@@ -144,27 +149,27 @@ setLoading(false)
 }
 
 const handleSign = async () => {
-if (!currentUser || !contractData || !contract || signing) return
+if (!currentUser || !contract || signing) return
 
-if (contract.pending_changes) {
-alert('Cannot sign while there are pending change requests. Please resolve them first.')
+if (contract.proposed_at) {
+alert('Cannot sign while there is a pending change proposal. Please resolve it first.')
 return
 }
 
 setSigning(true)
-const isClient = currentUser.user_id === contractData.client_id
+const isClientUser = currentUser.user_id === contract.client_id
 
 try {
 const updateData: any = {}
 const now = new Date().toISOString()
 
-if (isClient) {
+if (isClientUser) {
 updateData.client_signed_at = now
 } else {
 updateData.seeker_signed_at = now
 }
 
-const otherPartySigned = isClient ? contract.seeker_signed_at : contract.client_signed_at
+const otherPartySigned = isClientUser ? contract.seeker_signed_at : contract.client_signed_at
 if (otherPartySigned) {
 updateData.fully_executed_at = now
 }
@@ -183,7 +188,7 @@ setContract(updatedContract)
 if (updatedContract.fully_executed_at) {
 alert('🎉 Contract fully signed by both parties! You can now proceed with the work.')
 } else {
-alert(`Contract signed successfully! Waiting for ${isClient ? 'service provider' : 'client'} signature.`)
+alert(`Contract signed successfully! Waiting for ${isClientUser ? 'service provider' : 'client'} signature.`)
 }
 
 } catch (error: any) {
@@ -194,9 +199,18 @@ setSigning(false)
 }
 }
 
+const openChangeModal = () => {
+setProposedAmount(contract?.contract_payment_amount?.toString() || '')
+setProposedType(contract?.contract_payment_type || 'Fixed')
+setProposedDescription(contract?.contract_description || '')
+setProposedRequirements(contract?.contract_requirements || '')
+setProposedNote('')
+setShowChangeModal(true)
+}
+
 const handleRequestChange = async () => {
-if (!changeRequest.trim()) {
-alert('Please describe the changes you want to make.')
+if (!proposedAmount || isNaN(Number(proposedAmount)) || Number(proposedAmount) <= 0) {
+alert('Please enter a valid payment amount.')
 return
 }
 
@@ -206,9 +220,13 @@ try {
 const { data: updatedContract, error } = await supabase
 .from('contracts')
 .update({
-pending_changes: changeRequest,
-pending_changes_by: currentUser.user_id,
-pending_changes_at: new Date().toISOString()
+proposed_payment_amount: Number(proposedAmount),
+proposed_payment_type: proposedType,
+proposed_description: proposedDescription,
+proposed_requirements: proposedRequirements,
+proposed_note: proposedNote || null,
+proposed_by: currentUser.user_id,
+proposed_at: new Date().toISOString()
 })
 .eq('id', contract.id)
 .select()
@@ -218,40 +236,59 @@ if (error) throw error
 
 setContract(updatedContract)
 setShowChangeModal(false)
-setChangeRequest('')
-alert('Change request submitted! The other party will be notified.')
+alert('Change proposal submitted! The other party will be notified.')
 
 } catch (error: any) {
 console.error('Error requesting change:', error)
-alert('Failed to submit change request: ' + error.message)
+alert('Failed to submit change proposal: ' + error.message)
 } finally {
 setSubmittingChange(false)
 }
 }
 
 const handleApproveChanges = async () => {
-if (!confirm('Are you sure you want to approve these changes?')) return
+if (!confirm('Approve these changes? Both parties will need to sign again afterward.')) return
 
 try {
 const history = contract.change_history || []
 history.push({
-version: contract.contract_version + 1,
-changes: contract.pending_changes,
-requested_by: contract.pending_changes_by,
-approved_at: new Date().toISOString()
+version: (contract.contract_version || 1) + 1,
+requested_by: contract.proposed_by,
+approved_at: new Date().toISOString(),
+note: contract.proposed_note || null,
+from: {
+payment_amount: contract.contract_payment_amount,
+payment_type: contract.contract_payment_type,
+description: contract.contract_description,
+requirements: contract.contract_requirements,
+},
+to: {
+payment_amount: contract.proposed_payment_amount,
+payment_type: contract.proposed_payment_type,
+description: contract.proposed_description,
+requirements: contract.proposed_requirements,
+}
 })
 
 const { data: updatedContract, error } = await supabase
 .from('contracts')
 .update({
-contract_version: contract.contract_version + 1,
+contract_payment_amount: contract.proposed_payment_amount,
+contract_payment_type: contract.proposed_payment_type,
+contract_description: contract.proposed_description,
+contract_requirements: contract.proposed_requirements,
+contract_version: (contract.contract_version || 1) + 1,
 change_history: history,
-pending_changes: null,
-pending_changes_by: null,
-pending_changes_at: null,
+proposed_payment_amount: null,
+proposed_payment_type: null,
+proposed_description: null,
+proposed_requirements: null,
+proposed_note: null,
+proposed_by: null,
+proposed_at: null,
 client_signed_at: null,
 seeker_signed_at: null,
-fully_executed_at: null
+fully_executed_at: null,
 })
 .eq('id', contract.id)
 .select()
@@ -275,9 +312,13 @@ try {
 const { data: updatedContract, error } = await supabase
 .from('contracts')
 .update({
-pending_changes: null,
-pending_changes_by: null,
-pending_changes_at: null
+proposed_payment_amount: null,
+proposed_payment_type: null,
+proposed_description: null,
+proposed_requirements: null,
+proposed_note: null,
+proposed_by: null,
+proposed_at: null,
 })
 .eq('id', contract.id)
 .select()
@@ -306,20 +347,22 @@ return (
 )
 }
 
-const isClient = currentUser?.user_id === contractData?.client_id
-const gig = contractData?.gigs
-const seekerInfo = contractData?.profiles
-const clientInfo = contractData?.client_profiles
+const isClient = currentUser?.user_id === contract?.client_id
 
 const clientSigned = !!contract?.client_signed_at
 const seekerSigned = !!contract?.seeker_signed_at
 const fullyExecuted = !!contract?.fully_executed_at
 
 const userHasSigned = isClient ? clientSigned : seekerSigned
-const canSign = !userHasSigned && !fullyExecuted && !contract?.pending_changes
-const hasPendingChanges = !!contract?.pending_changes
-const isChangeRequester = contract?.pending_changes_by === currentUser?.user_id
+const hasPendingChanges = !!contract?.proposed_at
+const canSign = !userHasSigned && !fullyExecuted && !hasPendingChanges
+const isChangeRequester = contract?.proposed_by === currentUser?.user_id
 const canApproveChanges = hasPendingChanges && !isChangeRequester
+
+const amountChanged = hasPendingChanges && Number(contract.proposed_payment_amount) !== Number(contract.contract_payment_amount)
+const typeChanged = hasPendingChanges && contract.proposed_payment_type !== contract.contract_payment_type
+const descriptionChanged = hasPendingChanges && contract.proposed_description !== contract.contract_description
+const requirementsChanged = hasPendingChanges && contract.proposed_requirements !== contract.contract_requirements
 
 return (
 <div className="min-h-screen bg-gray-50">
@@ -345,6 +388,7 @@ return (
 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 <div className="bg-white rounded-lg shadow-lg p-8">
 <div className="text-center mb-8">
+<img src="/logo.png" alt="BaseGigs" className="h-20 mx-auto mb-4" />
 <h1 className="text-3xl font-bold text-gray-900 mb-2">Service Agreement Contract</h1>
 <p className="text-gray-600">
 Contract ID: #{contract?.id} | Version {contract?.contract_version || 1} | Created: {new Date(contract?.created_at).toLocaleDateString()}
@@ -352,14 +396,39 @@ Contract ID: #{contract?.id} | Version {contract?.contract_version || 1} | Creat
 </div>
 
 {hasPendingChanges && (
-<div className="mb-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
-<h3 className="font-bold text-yellow-900 mb-2">⚠️ Pending Change Request</h3>
-<p className="text-yellow-800 mb-2">
-<strong>{isChangeRequester ? 'You' : (isClient ? 'Service Provider' : 'Client')}</strong> requested changes on {new Date(contract.pending_changes_at).toLocaleString()}:
+<div className="mb-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 print:hidden">
+<h3 className="font-bold text-yellow-900 mb-2">⚠️ Pending Change Proposal</h3>
+<p className="text-yellow-800 mb-3">
+<strong>{isChangeRequester ? 'You' : (isClient ? 'Service Provider' : 'Client')}</strong> proposed these changes on {new Date(contract.proposed_at).toLocaleString()}:
 </p>
-<p className="text-gray-700 bg-white p-3 rounded border border-yellow-200 mb-3">
-{contract.pending_changes}
-</p>
+<div className="bg-white rounded border border-yellow-200 p-3 mb-3 space-y-2 text-sm">
+{amountChanged && (
+<p><strong>Payment Amount:</strong> R{Number(contract.contract_payment_amount).toLocaleString()} → R{Number(contract.proposed_payment_amount).toLocaleString()}</p>
+)}
+{typeChanged && (
+<p><strong>Payment Type:</strong> {contract.contract_payment_type} → {contract.proposed_payment_type}</p>
+)}
+{descriptionChanged && (
+<div>
+<p><strong>Description:</strong></p>
+<p className="text-gray-500 line-through">{contract.contract_description}</p>
+<p className="text-green-700">{contract.proposed_description}</p>
+</div>
+)}
+{requirementsChanged && (
+<div>
+<p><strong>Requirements:</strong></p>
+<p className="text-gray-500 line-through">{contract.contract_requirements}</p>
+<p className="text-green-700">{contract.proposed_requirements}</p>
+</div>
+)}
+{contract.proposed_note && (
+<p className="pt-2 border-t"><strong>Note:</strong> {contract.proposed_note}</p>
+)}
+{!amountChanged && !typeChanged && !descriptionChanged && !requirementsChanged && (
+<p className="text-gray-500 italic">No actual changes were made to the terms.</p>
+)}
+</div>
 {canApproveChanges && (
 <div className="flex gap-3">
 <button
@@ -377,7 +446,7 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 </div>
 )}
 {isChangeRequester && (
-<p className="text-sm text-yellow-700">Waiting for {isClient ? 'service provider' : 'client'} to review your request...</p>
+<p className="text-sm text-yellow-700">Waiting for {isClient ? 'service provider' : 'client'} to review your proposal...</p>
 )}
 </div>
 )}
@@ -385,12 +454,12 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <div className="space-y-6 text-gray-800">
 <section>
 <h2 className="text-xl font-bold mb-3">1. Parties</h2>
-<p><strong>Client:</strong> {clientInfo?.full_name}</p>
-<p><strong>Email:</strong> {clientInfo?.email}</p>
-<p><strong>Phone:</strong> {clientInfo?.phone_number}</p>
-<p className="mt-3"><strong>Service Provider (Gig Seeker):</strong> {seekerInfo?.full_name}</p>
-<p><strong>Email:</strong> {seekerInfo?.email}</p>
-<p><strong>Phone:</strong> {seekerInfo?.phone_number}</p>
+<p><strong>Client:</strong> {contract?.client_full_name}</p>
+<p><strong>Email:</strong> {contract?.client_email}</p>
+<p><strong>Phone:</strong> {contract?.client_phone}</p>
+<p className="mt-3"><strong>Service Provider (Gig Seeker):</strong> {contract?.seeker_full_name}</p>
+<p><strong>Email:</strong> {contract?.seeker_email}</p>
+<p><strong>Phone:</strong> {contract?.seeker_phone}</p>
 </section>
 
 <section>
@@ -399,15 +468,15 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <p><strong>Category:</strong> {gig?.gig_type}</p>
 <p><strong>Location:</strong> {gig?.city}, {gig?.province}</p>
 <p className="mt-3"><strong>Description:</strong></p>
-<p className="bg-gray-50 p-3 rounded">{gig?.explanation}</p>
+<p className="bg-gray-50 p-3 rounded whitespace-pre-wrap">{contract?.contract_description}</p>
 <p className="mt-3"><strong>Requirements:</strong></p>
-<p className="bg-gray-50 p-3 rounded">{gig?.requirements}</p>
+<p className="bg-gray-50 p-3 rounded whitespace-pre-wrap">{contract?.contract_requirements}</p>
 </section>
 
 <section>
 <h2 className="text-xl font-bold mb-3">3. Payment Terms</h2>
-<p><strong>Amount:</strong> R{gig?.payment_amount?.toLocaleString()}</p>
-<p><strong>Type:</strong> {gig?.payment_type}</p>
+<p><strong>Amount:</strong> R{Number(contract?.contract_payment_amount || 0).toLocaleString()}</p>
+<p><strong>Type:</strong> {contract?.contract_payment_type}</p>
 <p className="mt-2 text-sm text-gray-600">Payment shall be made upon satisfactory completion of the services as described above.</p>
 </section>
 
@@ -427,10 +496,15 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <h2 className="text-xl font-bold mb-3">Change History</h2>
 <div className="space-y-2">
 {contract.change_history.map((change: any, idx: number) => (
-<div key={idx} className="bg-gray-50 p-3 rounded">
-<p className="font-semibold">Version {change.version}</p>
-<p className="text-sm text-gray-600">Approved: {new Date(change.approved_at).toLocaleString()}</p>
-<p className="text-sm mt-1">{change.changes}</p>
+<div key={idx} className="bg-gray-50 p-3 rounded text-sm">
+<p className="font-semibold">Version {change.version} — Approved {new Date(change.approved_at).toLocaleString()}</p>
+{Number(change.to?.payment_amount) !== Number(change.from?.payment_amount) && (
+<p>Payment Amount: R{Number(change.from?.payment_amount || 0).toLocaleString()} → R{Number(change.to?.payment_amount || 0).toLocaleString()}</p>
+)}
+{change.to?.payment_type !== change.from?.payment_type && (
+<p>Payment Type: {change.from?.payment_type} → {change.to?.payment_type}</p>
+)}
+{change.note && <p className="mt-1 italic">&quot;{change.note}&quot;</p>}
 </div>
 ))}
 </div>
@@ -446,7 +520,7 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 {clientSigned ? (
 <div>
 <p className="text-green-600 font-bold">✓ SIGNED</p>
-<p className="text-sm text-gray-600">{clientInfo?.full_name}</p>
+<p className="text-sm text-gray-600">{contract?.client_full_name}</p>
 <p className="text-sm text-gray-600">
 {new Date(contract.client_signed_at).toLocaleString()}
 </p>
@@ -461,7 +535,7 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 {seekerSigned ? (
 <div>
 <p className="text-green-600 font-bold">✓ SIGNED</p>
-<p className="text-sm text-gray-600">{seekerInfo?.full_name}</p>
+<p className="text-sm text-gray-600">{contract?.seeker_full_name}</p>
 <p className="text-sm text-gray-600">
 {new Date(contract.seeker_signed_at).toLocaleString()}
 </p>
@@ -485,10 +559,10 @@ className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-70
 
 {!fullyExecuted && !hasPendingChanges && (
 <button
-onClick={() => setShowChangeModal(true)}
+onClick={openChangeModal}
 className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
 >
-📝 Request Changes
+📝 Propose Changes
 </button>
 )}
 
@@ -526,31 +600,79 @@ className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font
 </div>
 
 {showChangeModal && (
-<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-<div className="bg-white rounded-lg max-w-2xl w-full p-6">
-<h2 className="text-2xl font-bold mb-4">Request Contract Changes</h2>
-<p className="text-gray-600 mb-4">
-Describe the changes you'd like to make to this contract. The other party will be notified and can approve or reject your request.
+<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+<div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+<h2 className="text-2xl font-bold mb-2">Propose Contract Changes</h2>
+<p className="text-gray-600 mb-6">
+Update the terms below to reflect what you&apos;ve agreed on. The other party will need to approve before it becomes official, and you&apos;ll both need to sign again afterward.
 </p>
-<textarea
-value={changeRequest}
-onChange={(e) => setChangeRequest(e.target.value)}
-className="w-full border rounded-lg p-3 mb-4 h-32"
-placeholder="Example: Change payment from hourly to fixed rate of R5000..."
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+<div>
+<label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount (ZAR) *</label>
+<input
+type="number"
+min="0"
+value={proposedAmount}
+onChange={(e) => setProposedAmount(e.target.value)}
+className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
 />
+</div>
+<div>
+<label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
+<select
+value={proposedType}
+onChange={(e) => setProposedType(e.target.value)}
+className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+>
+<option value="Fixed">Fixed</option>
+<option value="Hourly">Hourly</option>
+<option value="Negotiable">Negotiable</option>
+</select>
+</div>
+</div>
+
+<div className="mb-4">
+<label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+<textarea
+value={proposedDescription}
+onChange={(e) => setProposedDescription(e.target.value)}
+rows={3}
+className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+/>
+</div>
+
+<div className="mb-4">
+<label className="block text-sm font-medium text-gray-700 mb-2">Requirements</label>
+<textarea
+value={proposedRequirements}
+onChange={(e) => setProposedRequirements(e.target.value)}
+rows={3}
+className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+/>
+</div>
+
+<div className="mb-6">
+<label className="block text-sm font-medium text-gray-700 mb-2">Note (optional)</label>
+<textarea
+value={proposedNote}
+onChange={(e) => setProposedNote(e.target.value)}
+rows={2}
+className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+placeholder="Anything you want the other party to know about this change..."
+/>
+</div>
+
 <div className="flex gap-3">
 <button
 onClick={handleRequestChange}
 disabled={submittingChange}
 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
 >
-{submittingChange ? 'Submitting...' : 'Submit Request'}
+{submittingChange ? 'Submitting...' : 'Submit Proposal'}
 </button>
 <button
-onClick={() => {
-setShowChangeModal(false)
-setChangeRequest('')
-}}
+onClick={() => setShowChangeModal(false)}
 className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
 >
 Cancel
