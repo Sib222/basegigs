@@ -37,6 +37,8 @@ export default function BothDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
+  const [clientProfile, setClientProfile] = useState<any>(null)
+  const [seekerProfile, setSeekerProfile] = useState<any>(null)
   const [activeView, setActiveView] = useState<'client' | 'seeker'>('client')
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -93,6 +95,22 @@ export default function BothDashboard() {
       }
 
       setProfile(profileData)
+
+      // Fetch client profile photo
+      const { data: clientProfileData } = await supabase
+        .from('client_profiles')
+        .select('photo_url')
+        .eq('user_id', user.id)
+        .single()
+      setClientProfile(clientProfileData)
+
+      // Fetch gig seeker profile photo
+      const { data: seekerProfileData } = await supabase
+        .from('gig_seeker_profiles')
+        .select('photo_url')
+        .eq('user_id', user.id)
+        .single()
+      setSeekerProfile(seekerProfileData)
 
       // Fetch subscription
       const { data: subsData, error: subsError } = await supabase
@@ -191,6 +209,13 @@ export default function BothDashboard() {
     }
   }
 
+  const getPhotoUrl = (photoUrl: string | null | undefined) => {
+    if (!photoUrl) return null
+    if (photoUrl.startsWith('http')) return photoUrl
+    const { data } = supabase.storage.from('profile-photos').getPublicUrl(photoUrl)
+    return data.publicUrl
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -275,27 +300,31 @@ export default function BothDashboard() {
     ? new Date(subscription.expires_at).toLocaleDateString()
     : 'N/A'
 
+  const clientPhotoUrl = getPhotoUrl(clientProfile?.photo_url)
+  const seekerPhotoUrl = getPhotoUrl(seekerProfile?.photo_url)
+  const currentPhotoUrl = activeView === 'client' ? clientPhotoUrl : seekerPhotoUrl
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-sage">
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">B</span>
-              <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+              <img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+              <span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
             </Link>
             <div className="flex items-center space-x-4">
-              <Link href="/my-contracts" className="px-4 py-2 text-gray-700 hover:text-primary font-medium">
+              <Link href="/my-contracts" className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors">
                 📄 My Contracts
               </Link>
-              <span className="text-gray-700">Welcome, {profile?.full_name}</span>
+              <span className="text-gray-700 hidden sm:inline">Welcome, {profile?.full_name}</span>
               <Link
                 href="/pricing"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-semibold transition-colors"
               >
                 Upgrade Plan
               </Link>
-              <button onClick={handleLogout} className="px-4 py-2 text-gray-700 hover:text-primary">
+              <button onClick={handleLogout} className="px-4 py-2 text-gray-700 hover:text-primary transition-colors">
                 Logout
               </button>
             </div>
@@ -304,16 +333,26 @@ export default function BothDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hybrid Dashboard</h1>
-          <p className="text-gray-600">Switch between Client and Gig Seeker views</p>
+        {/* Profile Header */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6 flex flex-col items-center text-center md:flex-row md:text-left gap-6">
+          <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-primary-light flex-shrink-0 bg-sage flex items-center justify-center">
+            {currentPhotoUrl ? (
+              <img src={currentPhotoUrl} alt={profile?.full_name || 'Profile'} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-5xl">{activeView === 'client' ? '🏢' : '👤'}</span>
+            )}
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hybrid Dashboard</h1>
+            <p className="text-gray-600">Switch between Client and Gig Seeker views</p>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-2 mb-6 inline-flex">
           <button
             onClick={() => setActiveView('client')}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              activeView === 'client' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
+              activeView === 'client' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-sage'
             }`}
           >
             Client View
@@ -321,7 +360,7 @@ export default function BothDashboard() {
           <button
             onClick={() => setActiveView('seeker')}
             className={`relative px-6 py-2 rounded-lg font-semibold transition-colors ${
-              activeView === 'seeker' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
+              activeView === 'seeker' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-sage'
             }`}
           >
             Gig Seeker View
@@ -413,7 +452,7 @@ export default function BothDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Link
                   href="/my-contracts"
-                  className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center"
+                  className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center transition-colors"
                 >
                   <div className="text-3xl mb-2">📄</div>
                   <h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
@@ -421,21 +460,21 @@ export default function BothDashboard() {
                 </Link>
                 <Link
                   href="/post-gig"
-                  className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"
+                  className="p-6 border-2 border-primary rounded-lg hover:bg-primary-light text-center transition-colors"
                 >
                   <h3 className="text-xl font-semibold text-primary mb-2">Post a Gig</h3>
                   <p className="text-gray-600">Create a new gig listing</p>
                 </Link>
                 <Link
                   href="/find-talent"
-                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-sage text-center transition-colors"
                 >
                   <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
                   <p className="text-gray-600">Browse verified gig seekers</p>
                 </Link>
                 <Link
                   href="/dashboard/client/profile"
-                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-sage text-center transition-colors"
                 >
                   <h3 className="text-xl font-semibold mb-2">Edit Profile</h3>
                   <p className="text-gray-600">Update your info and photo</p>
@@ -481,7 +520,7 @@ export default function BothDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                   href="/my-contracts"
-                  className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center"
+                  className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center transition-colors"
                 >
                   <div className="text-3xl mb-2">📄</div>
                   <h3 className="text-xl font-semibold text-blue-700 mb-2">My Contracts</h3>
@@ -489,21 +528,21 @@ export default function BothDashboard() {
                 </Link>
                 <Link
                   href="/browse-gigs"
-                  className="p-6 border-2 border-primary rounded-lg hover:bg-green-50 text-center"
+                  className="p-6 border-2 border-primary rounded-lg hover:bg-primary-light text-center transition-colors"
                 >
                   <h3 className="text-xl font-semibold text-primary mb-2">Browse Gigs</h3>
                   <p className="text-gray-600">Find and apply for gigs</p>
                 </Link>
                 <Link
                   href="/find-talent"
-                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-sage text-center transition-colors"
                 >
                   <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
                   <p className="text-gray-600">Browse verified gig seekers</p>
                 </Link>
                 <Link
                   href="/dashboard/gig-seeker/applications"
-                  className="relative p-6 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+                  className="relative p-6 border-2 border-gray-300 rounded-lg hover:bg-sage text-center transition-colors"
                 >
                   {seekerHasNotification && (
                     <span
