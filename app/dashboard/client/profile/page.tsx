@@ -139,13 +139,20 @@ export default function ClientEditProfilePage() {
     setSavingAbout(true)
 
     try {
+      // Upsert instead of update: if a client_profiles row doesn't exist yet
+      // for this account, update() would silently affect zero rows and the
+      // save would appear to succeed while doing nothing. Upsert guarantees
+      // the row exists.
       const { error } = await supabase
         .from('client_profiles')
-        .update({
-          background,
-          looking_for: lookingFor,
-        })
-        .eq('user_id', currentUser.id)
+        .upsert(
+          {
+            user_id: currentUser.id,
+            background,
+            looking_for: lookingFor,
+          },
+          { onConflict: 'user_id' }
+        )
 
       if (error) throw error
 
@@ -191,10 +198,18 @@ export default function ClientEditProfilePage() {
         .from('profile-photos')
         .getPublicUrl(filePath)
 
+      // Upsert instead of update — see note in handleSaveAbout above.
+      // This is the fix for photos appearing to upload successfully but
+      // never actually showing up on the dashboard.
       const { error: updateError } = await supabase
         .from('client_profiles')
-        .update({ photo_url: publicUrl })
-        .eq('user_id', currentUser.id)
+        .upsert(
+          {
+            user_id: currentUser.id,
+            photo_url: publicUrl,
+          },
+          { onConflict: 'user_id' }
+        )
 
       if (updateError) throw updateError
 
@@ -219,15 +234,15 @@ export default function ClientEditProfilePage() {
   const dashboardHref = profile?.user_type === 'both' ? '/dashboard/both' : '/dashboard/client'
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-sage">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href={dashboardHref} className="flex items-center">
-              <span className="text-2xl font-bold text-primary">B</span>
-              <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+              <img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+              <span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
             </Link>
-            <Link href={dashboardHref} className="text-gray-700 hover:text-primary">
+            <Link href={dashboardHref} className="text-gray-700 hover:text-primary transition-colors">
               ← Back to Dashboard
             </Link>
           </div>
@@ -341,7 +356,7 @@ export default function ClientEditProfilePage() {
           <button
             onClick={handleSavePersonalInfo}
             disabled={saving}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
           >
             {saving ? 'Saving...' : 'Save Personal Info'}
           </button>
@@ -378,7 +393,7 @@ export default function ClientEditProfilePage() {
           <button
             onClick={handleSaveAbout}
             disabled={savingAbout}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
           >
             {savingAbout ? 'Saving...' : 'Save About Info'}
           </button>
@@ -402,7 +417,7 @@ export default function ClientEditProfilePage() {
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoChange}
-                className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-green-600"
+                className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark"
               />
               <p className="text-sm text-gray-500 mt-2">JPG, PNG or GIF (max 5MB). Can be a personal photo or a company logo.</p>
             </div>
@@ -412,7 +427,7 @@ export default function ClientEditProfilePage() {
             <button
               onClick={handlePhotoUpload}
               disabled={uploadingPhoto}
-              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
             >
               {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
             </button>
