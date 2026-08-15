@@ -517,7 +517,7 @@ export default function BothDashboard() {
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-2xl font-bold mb-6">Gig Seeker Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <Link
                   href="/my-contracts"
                   className="p-6 border-2 border-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 text-center transition-colors"
@@ -539,6 +539,13 @@ export default function BothDashboard() {
                 >
                   <h3 className="text-xl font-semibold mb-2">Find Talent</h3>
                   <p className="text-gray-600">Browse verified gig seekers</p>
+                </Link>
+                <Link
+                  href="/dashboard/gig-seeker/profile"
+                  className="p-6 border-2 border-gray-300 rounded-lg hover:bg-sage text-center transition-colors"
+                >
+                  <h3 className="text-xl font-semibold mb-2">Edit Profile</h3>
+                  <p className="text-gray-600">Update your skills and experience</p>
                 </Link>
                 <Link
                   href="/dashboard/gig-seeker/applications"
