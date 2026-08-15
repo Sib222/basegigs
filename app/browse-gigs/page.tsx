@@ -26,6 +26,7 @@ expires_at: string
 
 export default function BrowseGigsPage() {
 const [gigs, setGigs] = useState<Gig[]>([])
+const [clientPhotos, setClientPhotos] = useState<Record<string, string | null>>({})
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
 const [userType, setUserType] = useState<string | null>(null)
@@ -121,12 +122,44 @@ const { data, error } = await supabase
 .order('created_at', { ascending: false })
 
 if (error) throw error
-setGigs(data || [])
+const gigsData = data || []
+setGigs(gigsData)
+await fetchClientPhotos(gigsData)
 } catch (error) {
 console.error('Error fetching gigs:', error)
 } finally {
 setLoading(false)
 }
+}
+
+// Small circular profile photo shown next to "Posted by" on each gig card
+const fetchClientPhotos = async (gigsList: Gig[]) => {
+const uniqueClientIds = Array.from(new Set(gigsList.map(g => g.client_id))).filter(Boolean)
+if (uniqueClientIds.length === 0) return
+
+try {
+const { data, error } = await supabase
+.from('client_profiles')
+.select('user_id, photo_url')
+.in('user_id', uniqueClientIds)
+
+if (error) throw error
+
+const map: Record<string, string | null> = {}
+;(data || []).forEach((row: any) => {
+map[row.user_id] = row.photo_url
+})
+setClientPhotos(map)
+} catch (error) {
+console.error('Error fetching client photos:', error)
+}
+}
+
+const getPhotoUrl = (photoUrl: string | null | undefined) => {
+if (!photoUrl) return null
+if (photoUrl.startsWith('http')) return photoUrl
+const { data } = supabase.storage.from('profile-photos').getPublicUrl(photoUrl)
+return data.publicUrl
 }
 
 const handleApply = async (gig: Gig) => {
@@ -253,28 +286,28 @@ return (
 }
 
 return (
-<div className="min-h-screen bg-gray-50">
-<nav className="bg-white shadow-sm">
+<div className="min-h-screen bg-sage">
+<nav className="bg-white shadow-sm sticky top-0 z-50">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <div className="flex items-center">
 <Link href="/" className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
 </div>
 <div className="flex items-center space-x-4">
 {currentUser ? (
 <>
-<Link href={userType === 'client' ? '/dashboard/client' : userType === 'both' ? '/dashboard/both' : '/dashboard/gig-seeker'} className="text-gray-700 hover:text-primary">
+<Link href={userType === 'client' ? '/dashboard/client' : userType === 'both' ? '/dashboard/both' : '/dashboard/gig-seeker'} className="text-gray-700 hover:text-primary transition-colors">
 Dashboard
 </Link>
-<Link href="/find-talent" className="text-gray-700 hover:text-primary">Find Talent</Link>
+<Link href="/find-talent" className="text-gray-700 hover:text-primary transition-colors">Find Talent</Link>
 </>
 ) : (
 <>
-<Link href="/login" className="text-gray-700 hover:text-primary">Login</Link>
-<Link href="/signup" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600">Sign Up</Link>
+<Link href="/login" className="text-gray-700 hover:text-primary transition-colors">Login</Link>
+<Link href="/signup" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">Sign Up</Link>
 </>
 )}
 </div>
@@ -282,9 +315,13 @@ Dashboard
 </div>
 </nav>
 
-<div className="bg-white border-b">
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-<h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Gigs</h1>
+<div className="relative overflow-hidden bg-gradient-to-b from-primary-light to-sage border-b">
+<div
+className="hidden md:block absolute -top-16 -right-16 w-72 h-72 bg-secondary"
+style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+></div>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+<h1 className="text-3xl font-bold text-secondary mb-2">Browse Gigs</h1>
 <p className="text-gray-600">Find your next opportunity from {gigs.length} available gigs</p>
 </div>
 </div>
@@ -339,6 +376,7 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 <div className="grid grid-cols-1 gap-6">
 {filteredGigs.map((gig) => {
 const timeRemaining = gig.expires_at ? getTimeRemaining(gig.expires_at) : null
+const clientPhotoUrl = getPhotoUrl(clientPhotos[gig.client_id])
 return (
 <div key={gig.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
 <div className="flex justify-between items-start mb-4">
@@ -363,7 +401,7 @@ return (
 
 <div className="flex flex-wrap gap-2 mb-4">
 {gig.skills && gig.skills.map((skill, index) => (
-<span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+<span key={index} className="px-3 py-1 bg-primary-light text-primary-dark rounded-full text-sm">
 {skill}
 </span>
 ))}
@@ -399,7 +437,7 @@ Currently Full
 <button
 onClick={() => handleApply(gig)}
 disabled={applyingTo === gig.id}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors"
 >
 {applyingTo === gig.id ? 'Applying...' : 'Apply'}
 </button>
@@ -412,11 +450,20 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 </div>
 </div>
 
-<div className="mt-3 text-xs text-gray-500">
+<div className="mt-3 flex items-center gap-2">
+<div className="w-6 h-6 rounded-full overflow-hidden bg-sage border border-gray-200 flex-shrink-0 flex items-center justify-center">
+{clientPhotoUrl ? (
+<img src={clientPhotoUrl} alt={gig.client_name} className="w-full h-full object-cover" />
+) : (
+<span className="text-[10px]">🏢</span>
+)}
+</div>
+<span className="text-xs text-gray-500">
 Posted by:{' '}
 <Link href={`/client/${gig.client_id}`} className="text-primary hover:underline font-medium">
 {gig.client_name}
 </Link>
+</span>
 </div>
 </div>
 )
