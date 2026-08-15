@@ -278,10 +278,13 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-12">
+      <footer className="bg-secondary text-gray-300 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-white text-xl font-bold mb-2">BaseGigs</h3>
+            <div className="flex items-center mb-2">
+              <img src="/logo.png" alt="BaseGigs Logo" className="h-8 w-auto" />
+              <h3 className="text-white text-xl font-bold ml-2">BaseGigs</h3>
+            </div>
             <p className="text-gray-400">
               Connecting clients with talented gig seekers for short-term opportunities.
             </p>
