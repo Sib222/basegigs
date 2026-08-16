@@ -365,19 +365,19 @@ const descriptionChanged = hasPendingChanges && contract.proposed_description !=
 const requirementsChanged = hasPendingChanges && contract.proposed_requirements !== contract.contract_requirements
 
 return (
-<div className="min-h-screen bg-gray-50">
+<div className="min-h-screen bg-sage">
 <nav className="bg-white shadow-sm print:hidden">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <Link href={isClient ? '/dashboard/client' : '/dashboard/gig-seeker'} className="flex items-center">
-<span className="text-2xl font-bold text-green-600">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-8 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
 <div className="flex items-center gap-4">
-<Link href={`/chat/${applicationId}`} className="text-gray-700 hover:text-green-600">
+<Link href={`/chat/${applicationId}`} className="text-gray-700 hover:text-primary transition-colors">
 💬 Open Chat
 </Link>
-<Link href="/my-contracts" className="text-gray-700 hover:text-green-600">
+<Link href="/my-contracts" className="text-gray-700 hover:text-primary transition-colors">
 ← Back to Contracts
 </Link>
 </div>
@@ -412,14 +412,14 @@ Contract ID: #{contract?.id} | Version {contract?.contract_version || 1} | Creat
 <div>
 <p><strong>Description:</strong></p>
 <p className="text-gray-500 line-through">{contract.contract_description}</p>
-<p className="text-green-700">{contract.proposed_description}</p>
+<p className="text-primary-dark">{contract.proposed_description}</p>
 </div>
 )}
 {requirementsChanged && (
 <div>
 <p><strong>Requirements:</strong></p>
 <p className="text-gray-500 line-through">{contract.contract_requirements}</p>
-<p className="text-green-700">{contract.proposed_requirements}</p>
+<p className="text-primary-dark">{contract.proposed_requirements}</p>
 </div>
 )}
 {contract.proposed_note && (
@@ -433,13 +433,13 @@ Contract ID: #{contract?.id} | Version {contract?.contract_version || 1} | Creat
 <div className="flex gap-3">
 <button
 onClick={handleApproveChanges}
-className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium transition-colors"
 >
 ✓ Approve Changes
 </button>
 <button
 onClick={handleRejectChanges}
-className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
 >
 ✗ Reject Changes
 </button>
@@ -468,9 +468,9 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <p><strong>Category:</strong> {gig?.gig_type}</p>
 <p><strong>Location:</strong> {gig?.city}, {gig?.province}</p>
 <p className="mt-3"><strong>Description:</strong></p>
-<p className="bg-gray-50 p-3 rounded whitespace-pre-wrap">{contract?.contract_description}</p>
+<p className="bg-sage p-3 rounded whitespace-pre-wrap">{contract?.contract_description}</p>
 <p className="mt-3"><strong>Requirements:</strong></p>
-<p className="bg-gray-50 p-3 rounded whitespace-pre-wrap">{contract?.contract_requirements}</p>
+<p className="bg-sage p-3 rounded whitespace-pre-wrap">{contract?.contract_requirements}</p>
 </section>
 
 <section>
@@ -496,7 +496,7 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <h2 className="text-xl font-bold mb-3">Change History</h2>
 <div className="space-y-2">
 {contract.change_history.map((change: any, idx: number) => (
-<div key={idx} className="bg-gray-50 p-3 rounded text-sm">
+<div key={idx} className="bg-sage p-3 rounded text-sm">
 <p className="font-semibold">Version {change.version} — Approved {new Date(change.approved_at).toLocaleString()}</p>
 {Number(change.to?.payment_amount) !== Number(change.from?.payment_amount) && (
 <p>Payment Amount: R{Number(change.from?.payment_amount || 0).toLocaleString()} → R{Number(change.to?.payment_amount || 0).toLocaleString()}</p>
@@ -515,11 +515,11 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <h2 className="text-xl font-bold mb-4">5. Signatures</h2>
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-<div className={`border-2 p-4 rounded-lg ${clientSigned ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}>
+<div className={`border-2 p-4 rounded-lg ${clientSigned ? 'border-primary bg-primary-light' : 'border-gray-300'}`}>
 <p className="font-semibold mb-2">Client Signature</p>
 {clientSigned ? (
 <div>
-<p className="text-green-600 font-bold">✓ SIGNED</p>
+<p className="text-primary-dark font-bold">✓ SIGNED</p>
 <p className="text-sm text-gray-600">{contract?.client_full_name}</p>
 <p className="text-sm text-gray-600">
 {new Date(contract.client_signed_at).toLocaleString()}
@@ -530,11 +530,11 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 )}
 </div>
 
-<div className={`border-2 p-4 rounded-lg ${seekerSigned ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}>
+<div className={`border-2 p-4 rounded-lg ${seekerSigned ? 'border-primary bg-primary-light' : 'border-gray-300'}`}>
 <p className="font-semibold mb-2">Service Provider Signature</p>
 {seekerSigned ? (
 <div>
-<p className="text-green-600 font-bold">✓ SIGNED</p>
+<p className="text-primary-dark font-bold">✓ SIGNED</p>
 <p className="text-sm text-gray-600">{contract?.seeker_full_name}</p>
 <p className="text-sm text-gray-600">
 {new Date(contract.seeker_signed_at).toLocaleString()}
@@ -551,7 +551,7 @@ className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medi
 <button
 onClick={handleSign}
 disabled={signing}
-className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
 >
 {signing ? 'Signing...' : `Sign Contract as ${isClient ? 'Client' : 'Service Provider'}`}
 </button>
@@ -560,7 +560,7 @@ className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-70
 {!fullyExecuted && !hasPendingChanges && (
 <button
 onClick={openChangeModal}
-className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+className="w-full px-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary-light font-semibold transition-colors"
 >
 📝 Propose Changes
 </button>
@@ -575,8 +575,8 @@ className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
 )}
 
 {fullyExecuted && (
-<div className="bg-green-50 border border-green-200 p-4 rounded">
-<p className="text-green-800 font-semibold">
+<div className="bg-primary-light border border-primary/30 p-4 rounded">
+<p className="text-primary-dark font-semibold">
 ✓ Contract fully executed on {new Date(contract.fully_executed_at).toLocaleDateString()}! You may now proceed with the work.
 </p>
 </div>
@@ -591,7 +591,7 @@ This is a legally binding contract. Keep a copy for your records.
 </p>
 <button
 onClick={handleDownloadPDF}
-className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
 >
 🖨️ Download PDF
 </button>
@@ -667,13 +667,13 @@ placeholder="Anything you want the other party to know about this change..."
 <button
 onClick={handleRequestChange}
 disabled={submittingChange}
-className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
+className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium disabled:bg-gray-400 transition-colors"
 >
 {submittingChange ? 'Submitting...' : 'Submit Proposal'}
 </button>
 <button
 onClick={() => setShowChangeModal(false)}
-className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
 >
 Cancel
 </button>
