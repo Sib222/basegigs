@@ -170,20 +170,21 @@ export default function PostGigPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-sage">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-          <Link href="/dashboard/client" className="font-bold text-primary text-xl">
-            BaseGigs
+          <Link href="/dashboard/client" className="flex items-center">
+            <img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+            <span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
           </Link>
-          <Link href="/dashboard/client" className="text-gray-700 hover:underline">
+          <Link href="/dashboard/client" className="text-gray-700 hover:text-primary transition-colors">
             ← Back
           </Link>
         </div>
       </nav>
 
       <main className="max-w-3xl mx-auto p-6 bg-white mt-6 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6">Post a Gig</h1>
+        <h1 className="text-3xl font-bold mb-6 text-secondary">Post a Gig</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -324,7 +325,7 @@ export default function PostGigPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-white py-3 rounded hover:bg-green-600 transition disabled:opacity-50"
+            className="w-full bg-primary text-white py-3 rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
             {loading ? 'Posting…' : 'Post Gig'}
           </button>
