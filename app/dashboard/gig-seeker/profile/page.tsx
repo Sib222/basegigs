@@ -178,9 +178,14 @@ return
 setSavingProfessional(true)
 
 try {
+// Upsert instead of update: if a gig_seeker_profiles row is somehow
+// missing, update() would silently affect zero rows and this would
+// appear to succeed while saving nothing.
 const { error } = await supabase
 .from('gig_seeker_profiles')
-.update({
+.upsert(
+{
+user_id: currentUser.id,
 education_level: educationLevel,
 background_story: backgroundStory,
 gig_services: gigServices,
@@ -190,8 +195,9 @@ availability,
 expected_hourly_rate: expectedRate ? parseInt(expectedRate) : null,
 languages,
 travel_distance: travelDistance,
-})
-.eq('user_id', currentUser.id)
+},
+{ onConflict: 'user_id' }
+)
 
 if (error) throw error
 
@@ -248,10 +254,18 @@ const { data: { publicUrl } } = supabase.storage
 .from('profile-photos')
 .getPublicUrl(filePath)
 
+// Upsert instead of update — see note in handleSaveProfessionalInfo.
+// This is the fix for photos appearing to upload successfully but
+// never actually showing up on the dashboard.
 const { error: updateError } = await supabase
 .from('gig_seeker_profiles')
-.update({ photo_url: publicUrl })
-.eq('user_id', currentUser.id)
+.upsert(
+{
+user_id: currentUser.id,
+photo_url: publicUrl,
+},
+{ onConflict: 'user_id' }
+)
 
 if (updateError) throw updateError
 
@@ -290,10 +304,16 @@ const uploadedPaths = await Promise.all(uploadPromises)
 const existingDocs = seekerProfile?.documents || []
 const updatedDocs = [...existingDocs, ...uploadedPaths]
 
+// Upsert here too, for the same reason as photo_url above.
 const { error: updateError } = await supabase
 .from('gig_seeker_profiles')
-.update({ documents: updatedDocs })
-.eq('user_id', currentUser.id)
+.upsert(
+{
+user_id: currentUser.id,
+documents: updatedDocs,
+},
+{ onConflict: 'user_id' }
+)
 
 if (updateError) throw updateError
 
@@ -316,16 +336,20 @@ return (
 )
 }
 
+// Route back to the correct dashboard — /dashboard/both for hybrid users,
+// not the standalone gig-seeker-only dashboard
+const dashboardHref = profile?.user_type === 'both' ? '/dashboard/both' : '/dashboard/gig-seeker'
+
 return (
-<div className="min-h-screen bg-gray-50">
-<nav className="bg-white shadow-sm">
+<div className="min-h-screen bg-sage">
+<nav className="bg-white shadow-sm sticky top-0 z-50">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
-<Link href="/dashboard/gig-seeker" className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<Link href={dashboardHref} className="flex items-center">
+<img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
-<Link href="/dashboard/gig-seeker" className="text-gray-700 hover:text-primary">
+<Link href={dashboardHref} className="text-gray-700 hover:text-primary transition-colors">
 ← Back to Dashboard
 </Link>
 </div>
@@ -447,7 +471,7 @@ className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
 <button
 onClick={handleSavePersonalInfo}
 disabled={saving}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
 >
 {saving ? 'Saving...' : 'Save Personal Info'}
 </button>
@@ -579,7 +603,7 @@ className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary
 <button
 onClick={handleSaveProfessionalInfo}
 disabled={savingProfessional}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
 >
 {savingProfessional ? 'Saving...' : 'Save Professional Info'}
 </button>
@@ -603,7 +627,7 @@ No Photo
 type="file"
 accept="image/*"
 onChange={handlePhotoChange}
-className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-green-600"
+className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark"
 />
 <p className="text-sm text-gray-500 mt-2">JPG, PNG or GIF (max 5MB)</p>
 </div>
@@ -613,7 +637,7 @@ className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file
 <button
 onClick={handlePhotoUpload}
 disabled={uploadingPhoto}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
 >
 {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
 </button>
@@ -633,7 +657,7 @@ type="file"
 multiple
 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
 onChange={(e) => setDocumentFiles(Array.from(e.target.files || []))}
-className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sage file:text-secondary hover:file:bg-primary-light"
 />
 <p className="text-sm text-gray-500 mt-2">PDF, DOC, DOCX, JPG, PNG (max 10MB each)</p>
 </div>
@@ -653,7 +677,7 @@ className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file
 <button
 onClick={handleDocumentUpload}
 disabled={uploadingDocs}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
 >
 {uploadingDocs ? 'Uploading...' : 'Upload Documents'}
 </button>
@@ -662,7 +686,7 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 {seekerProfile?.documents && seekerProfile.documents.length > 0 && (
 <div className="mt-8 pt-8 border-t">
 <h3 className="font-semibold mb-4">Uploaded Documents ({seekerProfile.documents.length})</h3>
-<div className="bg-gray-50 p-4 rounded">
+<div className="bg-sage p-4 rounded">
 <p className="text-sm text-gray-600">
 {seekerProfile.documents.length} document(s) uploaded. Documents are securely stored and visible to clients when you apply to gigs.
 </p>
@@ -671,9 +695,9 @@ className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disable
 )}
 </div>
 
-<div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-<h3 className="text-lg font-semibold text-blue-900 mb-2">💡 Profile Tips</h3>
-<ul className="text-blue-800 space-y-1 text-sm">
+<div className="bg-primary-light border border-primary/20 rounded-lg p-6 mt-6">
+<h3 className="text-lg font-semibold text-primary-dark mb-2">💡 Profile Tips</h3>
+<ul className="text-primary-dark space-y-1 text-sm">
 <li>• Use a clear, professional photo for your profile</li>
 <li>• Upload relevant certificates and qualifications</li>
 <li>• Keep your documents organized and up-to-date</li>
