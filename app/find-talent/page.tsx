@@ -1,8 +1,7 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface GigSeeker {
@@ -23,8 +22,7 @@ travel_distance: string | null
 portfolio_url: string | null
 }
 
-function FindTalentContent() {
-const searchParams = useSearchParams()
+export default function FindTalentPage() {
 const [seekers, setSeekers] = useState<GigSeeker[]>([])
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
@@ -80,14 +78,6 @@ useEffect(() => {
 checkUser()
 fetchSeekers()
 }, [])
-
-// Auto-open a specific seeker's profile if ?seekerId= is present in the URL
-useEffect(() => {
-const seekerId = searchParams.get('seekerId')
-if (seekerId) {
-openProfileById(seekerId)
-}
-}, [searchParams])
 
 const checkUser = async () => {
 const { data: { user } } = await supabase.auth.getUser()
@@ -147,51 +137,6 @@ setSeekers(enrichedData as any)
 console.error('Error fetching seekers:', error)
 } finally {
 setLoading(false)
-}
-}
-
-// Fetches a single seeker directly by user_id, regardless of verified status,
-// and opens their profile modal. Used when arriving via /find-talent?seekerId=...
-const openProfileById = async (seekerId: string) => {
-try {
-const { data: seekerData, error } = await supabase
-.from('gig_seeker_profiles')
-.select(`
-user_id,
-background_story,
-gig_services,
-education_level,
-experience,
-years_of_experience,
-availability,
-expected_hourly_rate,
-verified,
-photo_url,
-documents,
-languages,
-travel_distance,
-portfolio_url
-`)
-.eq('user_id', seekerId)
-.single()
-
-if (error || !seekerData) {
-console.error('Error fetching seeker profile by id:', error)
-alert('Could not load this profile. It may no longer exist.')
-return
-}
-
-const { data: profile } = await supabase
-.from('profiles')
-.select('full_name, age, gender, city, province, has_car')
-.eq('user_id', seekerId)
-.single()
-
-const fullSeeker = { ...seekerData, profiles: profile } as GigSeeker
-setSelectedSeeker(fullSeeker)
-setShowModal(true)
-} catch (err) {
-console.error('Error opening profile by id:', err)
 }
 }
 
@@ -329,28 +274,28 @@ return (
 }
 
 return (
-<div className="min-h-screen bg-gray-50">
-<nav className="bg-white shadow-sm">
+<div className="min-h-screen bg-sage">
+<nav className="bg-white shadow-sm sticky top-0 z-50">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <div className="flex items-center">
 <Link href="/" className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
 </div>
 <div className="flex items-center space-x-4">
 {currentUser ? (
 <>
-<Link href={userType === 'client' ? '/dashboard/client' : userType === 'both' ? '/dashboard/both' : '/dashboard/gig-seeker'} className="text-gray-700 hover:text-primary">
+<Link href={userType === 'client' ? '/dashboard/client' : userType === 'both' ? '/dashboard/both' : '/dashboard/gig-seeker'} className="text-gray-700 hover:text-primary transition-colors">
 Dashboard
 </Link>
-<Link href="/browse-gigs" className="text-gray-700 hover:text-primary">Browse Gigs</Link>
+<Link href="/browse-gigs" className="text-gray-700 hover:text-primary transition-colors">Browse Gigs</Link>
 </>
 ) : (
 <>
-<Link href="/login" className="text-gray-700 hover:text-primary">Login</Link>
-<Link href="/signup" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600">Sign Up</Link>
+<Link href="/login" className="text-gray-700 hover:text-primary transition-colors">Login</Link>
+<Link href="/signup" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">Sign Up</Link>
 </>
 )}
 </div>
@@ -358,9 +303,13 @@ Dashboard
 </div>
 </nav>
 
-<div className="bg-white border-b">
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-<h1 className="text-3xl font-bold text-gray-900 mb-2">Find Talent</h1>
+<div className="relative overflow-hidden bg-gradient-to-b from-primary-light to-sage border-b">
+<div
+className="hidden md:block absolute -top-16 -right-16 w-72 h-72 bg-secondary"
+style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+></div>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+<h1 className="text-3xl font-bold text-secondary mb-2">Find Talent</h1>
 <p className="text-gray-600">Browse {seekers.length} verified gig seekers</p>
 </div>
 </div>
@@ -408,23 +357,23 @@ className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:
 const photoUrl = getPhotoUrl(seeker.photo_url)
 return (
 <div key={seeker.user_id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-<div className="relative h-48 bg-gradient-to-br from-green-100 to-green-200">
+<div className="relative h-48 bg-gradient-to-br from-primary-light to-sage">
 {photoUrl ? (
 <img
 src={photoUrl}
 alt={seeker.profiles?.full_name || 'Profile'}
 className="w-full h-full object-cover"
 onError={(e) => {
-e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(seeker.profiles?.full_name || 'User')}&size=400&background=10b981&color=fff&bold=true`
+e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(seeker.profiles?.full_name || 'User')}&size=400&background=639922&color=fff&bold=true`
 }}
 />
 ) : (
 <div className="w-full h-full flex items-center justify-center">
-<div className="text-6xl text-green-600">👤</div>
+<div className="text-6xl text-primary">👤</div>
 </div>
 )}
 {seeker.verified && (
-<span className="absolute top-3 right-3 px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded-full shadow-lg">
+<span className="absolute top-3 right-3 px-2 py-1 bg-primary text-white text-xs font-semibold rounded-full shadow-lg">
 ✓ Verified
 </span>
 )}
@@ -453,7 +402,7 @@ e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(see
 <div className="text-sm font-semibold text-gray-900 mb-2">Services:</div>
 <div className="flex flex-wrap gap-1">
 {seeker.gig_services?.slice(0, 3).map((service, idx) => (
-<span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+<span key={idx} className="px-2 py-1 bg-primary-light text-primary-dark text-xs rounded-full">
 {service}
 </span>
 ))}
@@ -478,7 +427,7 @@ e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(see
 {isClient ? (
 <button
 onClick={() => openProfile(seeker)}
-className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold"
+className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-semibold transition-colors"
 >
 View Full Profile
 </button>
@@ -511,7 +460,7 @@ className="text-gray-500 hover:text-gray-700 text-2xl"
 
 <div className="p-6">
 <div className="flex items-start gap-6 mb-6">
-<div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0">
+<div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-primary-light to-sage flex-shrink-0">
 {getPhotoUrl(selectedSeeker.photo_url) ? (
 <img
 src={getPhotoUrl(selectedSeeker.photo_url)!}
@@ -519,7 +468,7 @@ alt={selectedSeeker.profiles?.full_name || 'Profile'}
 className="w-full h-full object-cover"
 />
 ) : (
-<div className="w-full h-full flex items-center justify-center text-4xl text-green-600">
+<div className="w-full h-full flex items-center justify-center text-4xl text-primary">
 👤
 </div>
 )}
@@ -534,11 +483,6 @@ className="w-full h-full object-cover"
 {selectedSeeker.languages && <div>🗣️ Languages: {selectedSeeker.languages}</div>}
 {selectedSeeker.travel_distance && <div>🚶 Travel: {selectedSeeker.travel_distance}</div>}
 </div>
-{!selectedSeeker.verified && (
-<div className="mt-2 inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
-⏳ Not yet verified
-</div>
-)}
 </div>
 </div>
 
@@ -553,7 +497,7 @@ className="w-full h-full object-cover"
 <h4 className="text-lg font-bold mb-2">Services Offered</h4>
 <div className="flex flex-wrap gap-2">
 {selectedSeeker.gig_services?.map((service, idx) => (
-<span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+<span key={idx} className="px-3 py-1 bg-primary-light text-primary-dark text-sm rounded-full">
 {service}
 </span>
 ))}
@@ -563,7 +507,7 @@ className="w-full h-full object-cover"
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h4 className="text-lg font-bold mb-2">Experience</h4>
-<div className="bg-gray-50 p-4 rounded-lg">
+<div className="bg-sage p-4 rounded-lg">
 <p className="text-sm text-gray-600 mb-2">
 <strong>Level:</strong> {selectedSeeker.experience || 'Not specified'}
 </p>
@@ -574,7 +518,7 @@ className="w-full h-full object-cover"
 </div>
 <div>
 <h4 className="text-lg font-bold mb-2">Education</h4>
-<div className="bg-gray-50 p-4 rounded-lg">
+<div className="bg-sage p-4 rounded-lg">
 <p className="text-sm text-gray-600">
 {selectedSeeker.education_level || 'Not specified'}
 </p>
@@ -585,14 +529,14 @@ className="w-full h-full object-cover"
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 <div>
 <h4 className="text-lg font-bold mb-2">Availability</h4>
-<div className="bg-gray-50 p-4 rounded-lg">
+<div className="bg-sage p-4 rounded-lg">
 <p className="text-sm text-gray-600">{selectedSeeker.availability || 'Not specified'}</p>
 </div>
 </div>
 {selectedSeeker.expected_hourly_rate && (
 <div>
 <h4 className="text-lg font-bold mb-2">Expected Rate</h4>
-<div className="bg-gray-50 p-4 rounded-lg">
+<div className="bg-sage p-4 rounded-lg">
 <p className="text-sm text-gray-600">R{selectedSeeker.expected_hourly_rate}/hour</p>
 </div>
 </div>
@@ -606,7 +550,7 @@ className="w-full h-full object-cover"
 href={selectedSeeker.portfolio_url}
 target="_blank"
 rel="noopener noreferrer"
-className="text-blue-600 hover:underline"
+className="text-primary hover:underline"
 >
 {selectedSeeker.portfolio_url}
 </a>
@@ -623,13 +567,13 @@ key={idx}
 href={getDocumentUrl(doc)}
 target="_blank"
 rel="noopener noreferrer"
-className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+className="flex items-center justify-between p-3 bg-sage rounded-lg hover:bg-primary-light transition"
 >
 <div className="flex items-center gap-2">
 <span className="text-2xl">📄</span>
 <span className="text-sm font-medium">{getDocumentName(doc)}</span>
 </div>
-<span className="text-blue-600 text-sm">Download →</span>
+<span className="text-primary text-sm">Download →</span>
 </a>
 ))}
 </div>
@@ -639,13 +583,13 @@ className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-
 <div className="flex gap-3 pt-4 border-t">
 <button
 onClick={() => setShowModal(false)}
-className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
 >
 Close
 </button>
 <button
 onClick={openInviteModal}
-className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium transition-colors"
 >
 📨 Invite to Apply
 </button>
@@ -676,18 +620,18 @@ Select which gig you'd like to invite <strong>{selectedSeeker.profiles?.full_nam
 
 <div className="space-y-4">
 {clientGigs.map((gig) => (
-<div key={gig.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+<div key={gig.id} className="border rounded-lg p-4 hover:bg-sage transition">
 <div className="flex justify-between items-start mb-2">
 <div className="flex-1">
 <h3 className="font-bold text-lg">{gig.gig_name}</h3>
 <p className="text-sm text-gray-600">{gig.gig_type}</p>
 <p className="text-sm text-gray-600">📍 {gig.city}, {gig.province}</p>
-<p className="text-green-600 font-semibold mt-2">R{gig.payment_amount?.toLocaleString()} ({gig.payment_type})</p>
+<p className="text-primary font-semibold mt-2">R{gig.payment_amount?.toLocaleString()} ({gig.payment_type})</p>
 </div>
 <button
 onClick={() => handleInvite(gig.id)}
 disabled={inviting}
-className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
+className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium disabled:bg-gray-400 transition-colors"
 >
 {inviting ? 'Inviting...' : 'Send Invite'}
 </button>
@@ -700,17 +644,5 @@ className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-
 </div>
 )}
 </div>
-)
-}
-
-export default function FindTalentPage() {
-return (
-<Suspense fallback={
-<div className="min-h-screen flex items-center justify-center">
-<div className="text-xl">Loading talent...</div>
-</div>
-}>
-<FindTalentContent />
-</Suspense>
 )
 }
