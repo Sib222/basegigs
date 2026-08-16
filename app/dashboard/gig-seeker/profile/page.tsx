@@ -129,6 +129,32 @@ prev.includes(language) ? prev.filter(l => l !== language) : [...prev, language]
 )
 }
 
+// Safely saves to gig_seeker_profiles whether or not a row already exists
+// for this user, without relying on a unique constraint (upsert requires
+// one and this table doesn't have it, causing an ON CONFLICT error).
+const saveSeekerProfileFields = async (fields: Record<string, any>) => {
+const { data: existing, error: checkError } = await supabase
+.from('gig_seeker_profiles')
+.select('user_id')
+.eq('user_id', currentUser.id)
+.maybeSingle()
+
+if (checkError) throw checkError
+
+if (existing) {
+const { error } = await supabase
+.from('gig_seeker_profiles')
+.update(fields)
+.eq('user_id', currentUser.id)
+if (error) throw error
+} else {
+const { error } = await supabase
+.from('gig_seeker_profiles')
+.insert({ user_id: currentUser.id, ...fields })
+if (error) throw error
+}
+}
+
 const handleSavePersonalInfo = async () => {
 if (!currentUser) return
 
@@ -178,14 +204,9 @@ return
 setSavingProfessional(true)
 
 try {
-// Upsert instead of update: if a gig_seeker_profiles row is somehow
-// missing, update() would silently affect zero rows and this would
-// appear to succeed while saving nothing.
-const { error } = await supabase
-.from('gig_seeker_profiles')
-.upsert(
-{
-user_id: currentUser.id,
+// See saveSeekerProfileFields above — avoids relying on a unique
+// constraint that this table doesn't have.
+await saveSeekerProfileFields({
 education_level: educationLevel,
 background_story: backgroundStory,
 gig_services: gigServices,
@@ -195,11 +216,7 @@ availability,
 expected_hourly_rate: expectedRate ? parseInt(expectedRate) : null,
 languages,
 travel_distance: travelDistance,
-},
-{ onConflict: 'user_id' }
-)
-
-if (error) throw error
+})
 
 alert('Professional info updated successfully!')
 setSeekerProfile({
@@ -254,20 +271,10 @@ const { data: { publicUrl } } = supabase.storage
 .from('profile-photos')
 .getPublicUrl(filePath)
 
-// Upsert instead of update — see note in handleSaveProfessionalInfo.
-// This is the fix for photos appearing to upload successfully but
-// never actually showing up on the dashboard.
-const { error: updateError } = await supabase
-.from('gig_seeker_profiles')
-.upsert(
-{
-user_id: currentUser.id,
-photo_url: publicUrl,
-},
-{ onConflict: 'user_id' }
-)
-
-if (updateError) throw updateError
+// See saveSeekerProfileFields above — avoids relying on a unique
+// constraint that this table doesn't have. This is the fix for photos
+// appearing to upload successfully but never actually showing up.
+await saveSeekerProfileFields({ photo_url: publicUrl })
 
 alert('Photo uploaded successfully!')
 setSeekerProfile({ ...seekerProfile, photo_url: publicUrl })
@@ -304,18 +311,8 @@ const uploadedPaths = await Promise.all(uploadPromises)
 const existingDocs = seekerProfile?.documents || []
 const updatedDocs = [...existingDocs, ...uploadedPaths]
 
-// Upsert here too, for the same reason as photo_url above.
-const { error: updateError } = await supabase
-.from('gig_seeker_profiles')
-.upsert(
-{
-user_id: currentUser.id,
-documents: updatedDocs,
-},
-{ onConflict: 'user_id' }
-)
-
-if (updateError) throw updateError
+// See saveSeekerProfileFields above — same fix as photo upload.
+await saveSeekerProfileFields({ documents: updatedDocs })
 
 alert('Documents uploaded successfully!')
 setSeekerProfile({ ...seekerProfile, documents: updatedDocs })
