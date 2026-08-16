@@ -94,7 +94,7 @@ setLoading(false)
 
 const getContractStatus = (contract: any) => {
 if (contract.fully_executed_at) {
-return { label: 'Fully Signed', color: 'bg-green-100 text-green-800', icon: '✓' }
+return { label: 'Fully Signed', color: 'bg-primary-light text-primary-dark', icon: '✓' }
 } else if (contract.client_signed_at || contract.seeker_signed_at) {
 return { label: 'Partially Signed', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' }
 } else {
@@ -123,17 +123,17 @@ const isClient = userRole === 'client'
 const isGigSeeker = userRole === 'gig_seeker'
 
 return (
-<div className="min-h-screen bg-gray-50">
-<nav className="bg-white shadow-sm">
+<div className="min-h-screen bg-sage">
+<nav className="bg-white shadow-sm sticky top-0 z-50">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <Link href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')} className="flex items-center">
-<span className="text-2xl font-bold text-green-600">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
 <Link
 href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')}
-className="text-gray-700 hover:text-green-600"
+className="text-gray-700 hover:text-primary transition-colors"
 >
 ← Back to Dashboard
 </Link>
@@ -151,30 +151,30 @@ className="text-gray-700 hover:text-green-600"
 <div className="mb-6 flex gap-3">
 <button
 onClick={() => setFilter('all')}
-className={`px-4 py-2 rounded-lg font-medium transition ${
+className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 filter === 'all'
-? 'bg-green-600 text-white'
-: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+? 'bg-primary text-white'
+: 'bg-white text-gray-700 border border-gray-300 hover:bg-sage'
 }`}
 >
 All ({contracts.length})
 </button>
 <button
 onClick={() => setFilter('pending')}
-className={`px-4 py-2 rounded-lg font-medium transition ${
+className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 filter === 'pending'
-? 'bg-green-600 text-white'
-: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+? 'bg-primary text-white'
+: 'bg-white text-gray-700 border border-gray-300 hover:bg-sage'
 }`}
 >
 Pending ({contracts.filter(c => !c.fully_executed_at).length})
 </button>
 <button
 onClick={() => setFilter('signed')}
-className={`px-4 py-2 rounded-lg font-medium transition ${
+className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 filter === 'signed'
-? 'bg-green-600 text-white'
-: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+? 'bg-primary text-white'
+: 'bg-white text-gray-700 border border-gray-300 hover:bg-sage'
 }`}
 >
 Fully Signed ({contracts.filter(c => c.fully_executed_at).length})
@@ -195,7 +195,7 @@ Fully Signed ({contracts.filter(c => c.fully_executed_at).length})
 </p>
 <Link
 href={isClient ? '/dashboard/client' : (isGigSeeker ? '/dashboard/gig-seeker' : '/dashboard/both')}
-className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+className="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium transition-colors"
 >
 Go to Dashboard
 </Link>
@@ -253,7 +253,7 @@ return (
 <div className="mt-4 pt-4 border-t">
 <div className="flex items-center gap-6 text-sm">
 <div className="flex items-center gap-2">
-<span className={contract.client_signed_at ? 'text-green-600' : 'text-gray-400'}>
+<span className={contract.client_signed_at ? 'text-primary' : 'text-gray-400'}>
 {contract.client_signed_at ? '✓' : '○'}
 </span>
 <span>Client {contract.client_signed_at ? 'Signed' : 'Pending'}</span>
@@ -264,7 +264,7 @@ return (
 )}
 </div>
 <div className="flex items-center gap-2">
-<span className={contract.seeker_signed_at ? 'text-green-600' : 'text-gray-400'}>
+<span className={contract.seeker_signed_at ? 'text-primary' : 'text-gray-400'}>
 {contract.seeker_signed_at ? '✓' : '○'}
 </span>
 <span>Service Provider {contract.seeker_signed_at ? 'Signed' : 'Pending'}</span>
@@ -281,21 +281,21 @@ return (
 <div className="ml-6 flex flex-col gap-2">
 <Link
 href={`/contract/${contract.application_id}`}
-className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-center whitespace-nowrap"
+className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium text-center whitespace-nowrap transition-colors"
 >
 View Contract
 </Link>
 {!userHasSigned && !contract.fully_executed_at && (
 <Link
 href={`/contract/${contract.application_id}`}
-className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-center whitespace-nowrap"
+className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary-light font-medium text-center whitespace-nowrap transition-colors"
 >
 Sign Now
 </Link>
 )}
 <Link
 href={`/chat/${contract.application_id}`}
-className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-center whitespace-nowrap"
+className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-sage font-medium text-center whitespace-nowrap transition-colors"
 >
 Open Chat
 </Link>
