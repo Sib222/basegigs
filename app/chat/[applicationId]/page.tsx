@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -200,16 +200,16 @@ return (
 const isAccepted = chatInfo?.application_status === 'accepted'
 
 return (
-<div className="min-h-screen bg-gray-50 flex flex-col">
+<div className="min-h-screen bg-sage flex flex-col">
 <nav className="bg-white shadow-sm">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <Link href={currentUser?.id === chatInfo?.client_id ? '/dashboard/client' : '/dashboard/gig-seeker'} className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-8 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
 <div className="text-center flex-1">
-<div className="font-semibold">{chatInfo?.gig_name}</div>
+<div className="font-semibold text-secondary">{chatInfo?.gig_name}</div>
 <div className="text-sm text-gray-600">
 {currentUser?.id === chatInfo?.client_id
 ? `Chatting with ${chatInfo?.seeker_name}`
@@ -219,7 +219,7 @@ return (
 </div>
 <Link
 href={currentUser?.id === chatInfo?.client_id ? '/dashboard/client/applications' : '/dashboard/gig-seeker/applications'}
-className="text-gray-700 hover:text-primary"
+className="text-gray-700 hover:text-primary transition-colors"
 >
 ← Back
 </Link>
@@ -231,7 +231,7 @@ className="text-gray-700 hover:text-primary"
 <div className="max-w-4xl w-full mx-auto mt-4 px-4">
 <Link
 href={`/contract/${applicationId}`}
-className="block w-full bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all p-4 text-center"
+className="block w-full bg-secondary text-white rounded-lg shadow-lg hover:shadow-xl transition-all p-4 text-center"
 >
 <div className="flex items-center justify-center gap-3">
 <span className="text-2xl">📄</span>
@@ -239,7 +239,7 @@ className="block w-full bg-gradient-to-r from-green-600 to-green-700 text-white 
 <div className="font-bold text-lg">
 {hasContract ? 'View Service Agreement' : 'Create Service Agreement'}
 </div>
-<div className="text-sm text-green-100">
+<div className="text-sm text-gray-200">
 {hasContract ? 'Review and sign your contract' : 'Auto-generated from gig details'}
 </div>
 </div>
@@ -249,7 +249,7 @@ className="block w-full bg-gradient-to-r from-green-600 to-green-700 text-white 
 </div>
 )}
 
-<div className="flex-1 max-w-4xl w-full mx-auto flex flex-col bg-white shadow-lg my-4">
+<div className="flex-1 max-w-4xl w-full mx-auto flex flex-col bg-white shadow-lg my-4 rounded-lg overflow-hidden">
 <div className="flex-1 overflow-y-auto p-6 space-y-4">
 {messages.length === 0 ? (
 <div className="text-center text-gray-500 py-12">
@@ -271,7 +271,7 @@ msg.sender_id === currentUser?.id
 >
 <p className="break-words">{msg.message}</p>
 <p className={`text-xs mt-1 ${
-msg.sender_id === currentUser?.id ? 'text-green-100' : 'text-gray-500'
+msg.sender_id === currentUser?.id ? 'text-primary-light' : 'text-gray-500'
 }`}>
 {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 </p>
@@ -282,7 +282,7 @@ msg.sender_id === currentUser?.id ? 'text-green-100' : 'text-gray-500'
 <div ref={messagesEndRef} />
 </div>
 
-<form onSubmit={handleSend} className="border-t p-4 bg-gray-50">
+<form onSubmit={handleSend} className="border-t p-4 bg-sage">
 <div className="flex space-x-2">
 <input
 type="text"
@@ -295,7 +295,7 @@ disabled={sending}
 <button
 type="submit"
 disabled={sending || !newMessage.trim()}
-className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold"
+className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 font-semibold transition-colors"
 >
 {sending ? 'Sending...' : 'Send'}
 </button>
