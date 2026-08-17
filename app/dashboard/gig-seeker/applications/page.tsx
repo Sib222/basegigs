@@ -104,15 +104,15 @@ return (
 }
 
 return (
-<div className="min-h-screen bg-gray-50">
-<nav className="bg-white shadow-sm">
+<div className="min-h-screen bg-sage">
+<nav className="bg-white shadow-sm sticky top-0 z-50">
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div className="flex justify-between items-center h-16">
 <Link href="/dashboard/gig-seeker" className="flex items-center">
-<span className="text-2xl font-bold text-primary">B</span>
-<span className="ml-2 text-xl font-semibold">BaseGigs</span>
+<img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+<span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
 </Link>
-<Link href="/dashboard/gig-seeker" className="text-gray-700 hover:text-primary">
+<Link href="/dashboard/gig-seeker" className="text-gray-700 hover:text-primary transition-colors">
 ← Back to Dashboard
 </Link>
 </div>
@@ -129,25 +129,25 @@ return (
 <div className="flex space-x-4">
 <button
 onClick={() => setFilter('all')}
-className={`px-4 py-2 rounded-lg font-semibold ${filter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'all' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
 >
 All ({applications.length})
 </button>
 <button
 onClick={() => setFilter('pending')}
-className={`px-4 py-2 rounded-lg font-semibold ${filter === 'pending' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'pending' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
 >
 Pending ({applications.filter(a => a.status === 'pending').length})
 </button>
 <button
 onClick={() => setFilter('accepted')}
-className={`px-4 py-2 rounded-lg font-semibold ${filter === 'accepted' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'accepted' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
 >
 Accepted ({applications.filter(a => a.status === 'accepted').length})
 </button>
 <button
 onClick={() => setFilter('declined')}
-className={`px-4 py-2 rounded-lg font-semibold ${filter === 'declined' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'declined' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
 >
 Declined ({applications.filter(a => a.status === 'declined').length})
 </button>
@@ -157,7 +157,7 @@ Declined ({applications.filter(a => a.status === 'declined').length})
 {filteredApplications.length === 0 ? (
 <div className="bg-white rounded-lg shadow p-12 text-center">
 <p className="text-xl text-gray-600 mb-4">No applications yet.</p>
-<Link href="/browse-gigs" className="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600">
+<Link href="/browse-gigs" className="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
 Browse Gigs
 </Link>
 </div>
@@ -178,7 +178,7 @@ Posted by: {app.gigs?.client_name}
 </div>
 <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
 app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-app.status === 'accepted' ? 'bg-green-100 text-green-800' :
+app.status === 'accepted' ? 'bg-primary-light text-primary-dark' :
 'bg-red-100 text-red-800'
 }`}>
 {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
@@ -196,7 +196,7 @@ Applied: {new Date(app.applied_at).toLocaleDateString()}
 
 {app.status === 'accepted' && (
 <div className="mt-4 pt-4 border-t">
-<Link href={`/chat/${app.id}`} className="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold text-center">
+<Link href={`/chat/${app.id}`} className="block w-full px-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary-light font-semibold text-center transition-colors">
 Open Chat 💬
 </Link>
 </div>
