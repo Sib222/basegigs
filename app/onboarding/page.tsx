@@ -269,18 +269,18 @@ export default function OnboardingPage() {
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label} {required ? <span className="text-red-500">*</span> : <span className="text-gray-400">(Optional)</span>}
       </label>
-      {hint && <p className="text-xs text-green-700 bg-green-50 rounded px-2 py-1 mb-2">{hint}</p>}
+      {hint && <p className="text-xs text-primary-dark bg-primary-light rounded px-2 py-1 mb-2">{hint}</p>}
       <div
         onClick={() => document.getElementById(`file-${label}`)?.click()}
-        className={`border-2 border-dashed rounded-lg p-4 cursor-pointer text-center transition hover:border-primary ${
-          file ? 'border-green-400 bg-green-50' : 'border-gray-300'
+        className={`border-2 border-dashed rounded-lg p-4 cursor-pointer text-center transition-colors hover:border-primary ${
+          file ? 'border-primary bg-primary-light' : 'border-gray-300'
         }`}
       >
         {file ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-2xl">📄</span>
-              <span className="text-sm font-medium text-green-700">{file.name}</span>
+              <span className="text-sm font-medium text-primary-dark">{file.name}</span>
             </div>
             <button
               type="button"
@@ -384,7 +384,7 @@ export default function OnboardingPage() {
               { value: 'gig_seeker', title: 'Gig Seeker', desc: 'I want to find and apply for gigs' },
               { value: 'both', title: 'Both', desc: 'I want to both post gigs and apply for gigs' },
             ].map(opt => (
-              <label key={opt.value} className="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary">
+              <label key={opt.value} className="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
                 <input type="radio" name="userType" value={opt.value} checked={userType === opt.value} onChange={(e) => setUserType(e.target.value)} className="h-4 w-4 text-primary focus:ring-primary" />
                 <div className="ml-3">
                   <div className="font-semibold">{opt.title}</div>
@@ -412,8 +412,8 @@ export default function OnboardingPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">What are you looking for?</label>
               <textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="Describe the type of talent or gigs you're interested in..." />
             </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-green-800 font-semibold">Almost done! Click Submit to complete your profile.</p>
+            <div className="bg-primary-light p-4 rounded-lg">
+              <p className="text-primary-dark font-semibold">Almost done! Click Submit to complete your profile.</p>
             </div>
           </div>
         )
@@ -637,7 +637,7 @@ export default function OnboardingPage() {
               <div className="flex items-center gap-4">
                 <div
                   onClick={() => photoInputRef.current?.click()}
-                  className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary overflow-hidden bg-gray-50"
+                  className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-sage"
                 >
                   {photoPreview ? (
                     <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
@@ -646,7 +646,7 @@ export default function OnboardingPage() {
                   )}
                 </div>
                 <div>
-                  <button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">
+                  <button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-sage rounded-lg text-sm hover:bg-primary-light transition-colors">
                     {photoPreview ? 'Change Photo' : 'Upload Photo'}
                   </button>
                   {photoPreview && (
@@ -694,9 +694,9 @@ export default function OnboardingPage() {
               />
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-green-800 font-semibold">Almost there! Click Submit to complete your profile.</p>
-              <p className="text-green-700 text-sm mt-1">Your profile will be reviewed and verified before appearing on the Find Talent page.</p>
+            <div className="bg-primary-light p-4 rounded-lg">
+              <p className="text-primary-dark font-semibold">Almost there! Click Submit to complete your profile.</p>
+              <p className="text-primary-dark text-sm mt-1">Your profile will be reviewed and verified before appearing on the Find Talent page.</p>
             </div>
           </div>
         )
@@ -715,7 +715,7 @@ export default function OnboardingPage() {
             <div className="flex items-center gap-4">
               <div
                 onClick={() => photoInputRef.current?.click()}
-                className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary overflow-hidden bg-gray-50"
+                className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden bg-sage"
               >
                 {photoPreview ? (
                   <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
@@ -724,7 +724,7 @@ export default function OnboardingPage() {
                 )}
               </div>
               <div>
-                <button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">
+                <button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-sage rounded-lg text-sm hover:bg-primary-light transition-colors">
                   {photoPreview ? 'Change Photo' : 'Upload Photo'}
                 </button>
                 {photoPreview && (
@@ -761,9 +761,9 @@ export default function OnboardingPage() {
             />
           </div>
 
-          <div className="bg-green-50 p-4 rounded-lg">
-            <p className="text-green-800 font-semibold">Almost there! Click Submit to complete your profile.</p>
-            <p className="text-green-700 text-sm mt-1">Your profile will be reviewed and verified before appearing on the Find Talent page.</p>
+          <div className="bg-primary-light p-4 rounded-lg">
+            <p className="text-primary-dark font-semibold">Almost there! Click Submit to complete your profile.</p>
+            <p className="text-primary-dark text-sm mt-1">Your profile will be reviewed and verified before appearing on the Find Talent page.</p>
           </div>
         </div>
       )
@@ -776,8 +776,11 @@ export default function OnboardingPage() {
   const isLastStep = step === totalSteps
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-sage py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
+        <div className="flex justify-center mb-6">
+          <img src="/logo.png" alt="BaseGigs Logo" className="h-12 w-auto" />
+        </div>
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="mb-8">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
@@ -792,24 +795,24 @@ export default function OnboardingPage() {
           {renderStep()}
 
           {loading && uploadProgress && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
+            <div className="mt-4 p-3 bg-primary-light rounded-lg text-sm text-primary-dark text-center">
               ⏳ {uploadProgress}
             </div>
           )}
 
           <div className="mt-8 flex justify-between">
             {step > 1 && (
-              <button onClick={handleBack} disabled={loading} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+              <button onClick={handleBack} disabled={loading} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-sage disabled:opacity-50 transition-colors">
                 Back
               </button>
             )}
             <div className="ml-auto">
               {!isLastStep ? (
-                <button onClick={handleNext} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600">
+                <button onClick={handleNext} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
                   Next
                 </button>
               ) : (
-                <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
+                <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors">
                   {loading ? 'Submitting...' : 'Submit'}
                 </button>
               )}
