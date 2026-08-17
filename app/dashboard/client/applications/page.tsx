@@ -210,15 +210,15 @@ function ClientApplicationsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-sage">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/dashboard/client" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">B</span>
-              <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+              <img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+              <span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
             </Link>
-            <Link href="/dashboard/client" className="text-gray-700 hover:text-primary">
+            <Link href="/dashboard/client" className="text-gray-700 hover:text-primary transition-colors">
               ← Back to Dashboard
             </Link>
           </div>
@@ -235,25 +235,25 @@ function ClientApplicationsContent() {
           <div className="flex space-x-4">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-semibold ${filter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'all' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
             >
               All ({applications.length})
             </button>
             <button
               onClick={() => setFilter('pending')}
-              className={`px-4 py-2 rounded-lg font-semibold ${filter === 'pending' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'pending' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
             >
               Pending ({applications.filter(a => a.status === 'pending').length})
             </button>
             <button
               onClick={() => setFilter('accepted')}
-              className={`px-4 py-2 rounded-lg font-semibold ${filter === 'accepted' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'accepted' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
             >
               Accepted ({applications.filter(a => a.status === 'accepted').length})
             </button>
             <button
               onClick={() => setFilter('declined')}
-              className={`px-4 py-2 rounded-lg font-semibold ${filter === 'declined' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${filter === 'declined' ? 'bg-primary text-white' : 'bg-sage text-gray-700'}`}
             >
               Declined ({applications.filter(a => a.status === 'declined').length})
             </button>
@@ -263,7 +263,7 @@ function ClientApplicationsContent() {
         {filteredApplications.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <p className="text-xl text-gray-600">No applications yet.</p>
-            <Link href="/dashboard/client" className="mt-4 inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600">
+            <Link href="/dashboard/client" className="mt-4 inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
               Go to Dashboard
             </Link>
           </div>
@@ -274,18 +274,18 @@ function ClientApplicationsContent() {
               return (
                 <div key={app.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                   {/* Header with Photo */}
-                  <div className="flex items-start gap-4 p-6 bg-gray-50 border-b">
+                  <div className="flex items-start gap-4 p-6 bg-sage border-b">
                     {photoUrl ? (
                       <img
                         src={photoUrl}
                         alt={app.profiles?.full_name}
                         className="w-20 h-20 rounded-full object-cover"
                         onError={(e) => {
-                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.profiles?.full_name || 'User')}&size=200&background=10b981&color=fff&bold=true`
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.profiles?.full_name || 'User')}&size=200&background=639922&color=fff&bold=true`
                         }}
                       />
                     ) : (
-                      <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-3xl">
+                      <div className="w-20 h-20 rounded-full bg-primary-light flex items-center justify-center text-3xl">
                         👤
                       </div>
                     )}
@@ -297,14 +297,14 @@ function ClientApplicationsContent() {
                       </div>
                       <Link
                         href={`/find-talent?seekerId=${app.gig_seeker_id}`}
-                        className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full hover:bg-purple-200 transition"
+                        className="inline-block mt-2 px-3 py-1 bg-secondary/10 text-secondary text-xs font-semibold rounded-full hover:bg-secondary/20 transition-colors"
                       >
                         🔎 View in Find Talent
                       </Link>
                     </div>
                     <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
                       app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      app.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                      app.status === 'accepted' ? 'bg-primary-light text-primary-dark' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
@@ -350,7 +350,7 @@ function ClientApplicationsContent() {
                         <h3 className="font-semibold text-gray-900 mb-2">Services:</h3>
                         <div className="flex flex-wrap gap-2">
                           {app.gig_seeker_profiles.gig_services.map((service, idx) => (
-                            <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            <span key={idx} className="px-3 py-1 bg-primary-light text-primary-dark rounded-full text-sm">
                               {service}
                             </span>
                           ))}
@@ -412,13 +412,13 @@ function ClientApplicationsContent() {
                       <div className="flex space-x-4 pt-4 border-t">
                         <button
                           onClick={() => handleAccept(app.id)}
-                          className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600 font-semibold"
+                          className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark font-semibold transition-colors"
                         >
                           Accept Application
                         </button>
                         <button
                           onClick={() => handleDecline(app.id)}
-                          className="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
+                          className="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition-colors"
                         >
                           Decline
                         </button>
@@ -427,7 +427,7 @@ function ClientApplicationsContent() {
 
                     {app.status === 'accepted' && (
                       <div className="pt-4 border-t">
-                        <Link href={`/chat/${app.id}`} className="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold text-center">
+                        <Link href={`/chat/${app.id}`} className="block w-full px-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary-light font-semibold text-center transition-colors">
                           Open Chat 💬
                         </Link>
                       </div>
