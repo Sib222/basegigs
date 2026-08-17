@@ -101,10 +101,10 @@ export default function ClientProfilePage({ params }: { params: { clientId: stri
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-sage">
         <div className="text-center">
           <p className="text-xl text-gray-600 mb-4">This client profile could not be found.</p>
-          <Link href="/browse-gigs" className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-green-600 inline-block">
+          <Link href="/browse-gigs" className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors inline-block">
             Back to Browse Gigs
           </Link>
         </div>
@@ -115,15 +115,15 @@ export default function ClientProfilePage({ params }: { params: { clientId: stri
   const photoUrl = getPhotoUrl(clientExtra?.photo_url || null)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-sage">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">B</span>
-              <span className="ml-2 text-xl font-semibold">BaseGigs</span>
+              <img src="/logo.png" alt="BaseGigs Logo" className="h-9 w-auto" />
+              <span className="ml-2 text-xl font-semibold text-secondary">BaseGigs</span>
             </Link>
-            <Link href="/browse-gigs" className="text-gray-700 hover:text-primary">
+            <Link href="/browse-gigs" className="text-gray-700 hover:text-primary transition-colors">
               ← Back to Browse Gigs
             </Link>
           </div>
@@ -132,19 +132,19 @@ export default function ClientProfilePage({ params }: { params: { clientId: stri
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="flex items-start gap-6 p-8 bg-gray-50 border-b">
-            <div className="w-28 h-28 rounded-full overflow-hidden bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0">
+          <div className="flex items-start gap-6 p-8 bg-sage border-b">
+            <div className="w-28 h-28 rounded-full overflow-hidden bg-gradient-to-br from-primary-light to-sage flex-shrink-0">
               {photoUrl ? (
                 <img
                   src={photoUrl}
                   alt={profile.full_name || 'Client'}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'Client')}&size=200&background=10b981&color=fff&bold=true`
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'Client')}&size=200&background=639922&color=fff&bold=true`
                   }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl text-green-600">🏢</div>
+                <div className="w-full h-full flex items-center justify-center text-4xl text-primary">🏢</div>
               )}
             </div>
             <div>
