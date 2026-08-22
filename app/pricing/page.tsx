@@ -8,9 +8,10 @@ import type { User } from '@supabase/supabase-js'
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [userType, setUserType] = useState<string | null>(null) // <-- added
+  const [userType, setUserType] = useState<string | null>(null)
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean>(false)
   const [loadingSubs, setLoadingSubs] = useState<boolean>(true)
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchUser() {
@@ -18,7 +19,6 @@ export default function PricingPage() {
       setUser(data.user)
 
       if (data.user) {
-        // Fetch user type from profiles table
         const { data: profile } = await supabase
           .from('profiles')
           .select('user_type')
@@ -26,13 +26,12 @@ export default function PricingPage() {
           .single()
         setUserType(profile?.user_type ?? null)
 
-        // Query subscriptions table for active subscription(s) for this user
         const { data: subsData, error } = await supabase
           .from('subscriptions')
-          .select('id, status, expires_at') // updated field from expiry_date to expires_at
+          .select('id, status, expires_at')
           .eq('user_id', data.user.id)
-          .in('status', ['active', 'trialing']) // adjust statuses as per your app
-          .gte('expires_at', new Date().toISOString()) // active means not expired
+          .in('status', ['active', 'trialing'])
+          .gte('expires_at', new Date().toISOString())
           .limit(1)
           .maybeSingle()
 
@@ -51,7 +50,7 @@ export default function PricingPage() {
   const plans = [
     {
       name: 'Pay-Per-Gig',
-      price: 'R100',
+      price: 'R60',
       period: 'per gig',
       description: 'Perfect for occasional hiring',
       features: [
@@ -62,12 +61,12 @@ export default function PricingPage() {
         'Basic support'
       ],
       cta: 'Post a Gig',
-      href: 'https://pay.yoco.com/r/2DGxWY',
+      planKey: 'pay_per_gig',
       popular: false
     },
     {
       name: 'Starter',
-      price: 'R300',
+      price: 'R100',
       period: 'per month',
       description: 'Great for growing businesses',
       features: [
@@ -79,12 +78,12 @@ export default function PricingPage() {
         'Basic analytics'
       ],
       cta: 'Get Started',
-      href: 'https://pay.yoco.com/r/mOE30j',
+      planKey: 'starter',
       popular: true
     },
     {
       name: 'Professional',
-      price: 'R700',
+      price: 'R200',
       period: 'per month',
       description: 'For frequent hirers',
       features: [
@@ -97,60 +96,70 @@ export default function PricingPage() {
         'Everything in Starter'
       ],
       cta: 'Go Pro',
-      href: 'https://pay.yoco.com/r/7v1Y3o',
+      planKey: 'professional',
       popular: false
     }
   ]
 
   const faqs = [
-    {
-      q: 'Is there a fee for gig seekers?',
-      a: 'No! BaseGigs is 100% free for gig seekers. Browse, apply, chat, and sign contracts at no cost.'
-    },
-    {
-      q: 'How long does a gig posting stay active?',
-      a: 'Each gig post stays active for 30 days. For Pay-Per-Gig, you pay R100 per post. With subscriptions, you can post multiple gigs that each stay active for 30 days.'
-    },
-    {
-      q: 'Can I cancel my subscription anytime?',
-      a: 'Yes, you can cancel your subscription at any time. You\'ll continue to have access until the end of your billing period.'
-    },
-    {
-      q: 'What happens if I exceed 5 gigs on the Starter plan?',
-      a: 'You can either wait until next month, upgrade to Professional for unlimited posts, or pay R100 per additional gig post.'
-    },
-    {
-      q: 'Do you take a commission on contracts?',
-      a: 'No! We don\'t take any commission from your contracts. You only pay for posting gigs - everything else is free.'
-    },
-    {
-      q: 'What payment methods do you accept?',
-      a: 'We accept all major credit/debit cards, EFT, and SnapScan. All payments are processed securely.'
-    }
+    { q: 'Is there a fee for gig seekers?', a: 'No! BaseGigs is 100% free for gig seekers. Browse, apply, chat, and sign contracts at no cost.' },
+    { q: 'How long does a gig posting stay active?', a: 'Each gig post stays active for 30 days. For Pay-Per-Gig, you pay R60 per post. With subscriptions, you can post multiple gigs that each stay active for 30 days.' },
+    { q: 'Can I cancel my subscription anytime?', a: 'Yes, you can cancel your subscription at any time. You\'ll continue to have access until the end of your billing period.' },
+    { q: 'What happens if I exceed 5 gigs on the Starter plan?', a: 'You can either wait until next month, upgrade to Professional for unlimited posts, or pay R60 per additional gig post.' },
+    { q: 'Do you take a commission on contracts?', a: 'No! We don\'t take any commission from your contracts. You only pay for posting gigs - everything else is free.' },
+    { q: 'What payment methods do you accept?', a: 'We accept all major credit/debit cards via Yoco. All payments are processed securely.' }
   ]
 
-  function handlePaymentClick(planHref: string) {
+  async function handlePaymentClick(planKey: string) {
     if (!user) {
-      // Not logged in → redirect to login
       window.location.href = '/login'
       return
     }
-
     if (loadingSubs) {
       alert('Checking subscription status, please wait...')
       return
     }
-
     if (hasActiveSubscription) {
       alert('You currently have an active subscription plan. Please manage your existing plan before purchasing another.')
       return
     }
 
-    // If no active subscription, open Yoco link in new tab
-    window.open(planHref, '_blank', 'noopener,noreferrer')
+    setProcessingPlan(planKey)
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+
+      if (!accessToken) {
+        window.location.href = '/login'
+        return
+      }
+
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ planKey }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.redirectUrl) {
+        alert(data.error || 'Could not start payment. Please try again.')
+        setProcessingPlan(null)
+        return
+      }
+
+      window.location.href = data.redirectUrl
+    } catch (err: any) {
+      console.error('Payment error:', err)
+      alert('Something went wrong starting your payment: ' + err.message)
+      setProcessingPlan(null)
+    }
   }
 
-  // Helper to build correct dashboard link based on userType
   function dashboardLink() {
     if (!userType) return '/dashboard'
     if (userType === 'client') return '/dashboard/client'
@@ -161,7 +170,6 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-sage">
-      {/* Navigation */}
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -188,7 +196,6 @@ export default function PricingPage() {
 
       <div className="bg-gradient-to-b from-primary-light to-sage">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {/* Header */}
           <div className="text-center mb-16">
             <h1 className="text-5xl font-bold text-secondary mb-4">Simple, Transparent Pricing</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">Choose the plan that fits your hiring needs. No hidden fees, cancel anytime.</p>
@@ -197,22 +204,17 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
             {plans.map((plan, idx) => (
               <div
                 key={idx}
                 className={`relative bg-white rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
-                  plan.popular
-                    ? 'shadow-xl ring-2 ring-primary'
-                    : 'shadow-sm border border-gray-100'
+                  plan.popular ? 'shadow-xl ring-2 ring-primary' : 'shadow-sm border border-gray-100'
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-primary text-white px-4 py-1 rounded-full text-sm font-bold shadow-md">
-                      Most Popular
-                    </span>
+                    <span className="bg-primary text-white px-4 py-1 rounded-full text-sm font-bold shadow-md">Most Popular</span>
                   </div>
                 )}
 
@@ -229,33 +231,26 @@ export default function PricingPage() {
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start">
                       <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       <span className="text-gray-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                {/* Replace anchor with button and handle click */}
                 <button
-                  onClick={() => handlePaymentClick(plan.href)}
-                  className={`w-full py-3 px-6 rounded-xl font-semibold transition-all text-center ${
-                    plan.popular
-                      ? 'bg-primary text-white hover:bg-primary-dark shadow-md'
-                      : 'bg-primary-light text-primary-dark hover:bg-primary hover:text-white'
+                  onClick={() => handlePaymentClick(plan.planKey)}
+                  disabled={processingPlan === plan.planKey}
+                  className={`w-full py-3 px-6 rounded-xl font-semibold transition-all text-center disabled:opacity-60 ${
+                    plan.popular ? 'bg-primary text-white hover:bg-primary-dark shadow-md' : 'bg-primary-light text-primary-dark hover:bg-primary hover:text-white'
                   }`}
                 >
-                  {plan.cta}
+                  {processingPlan === plan.planKey ? 'Redirecting to payment...' : plan.cta}
                 </button>
               </div>
             ))}
           </div>
 
-          {/* Bank Transfer Info */}
           <div className="max-w-3xl mx-auto bg-white rounded-2xl p-6 shadow-sm mb-16">
             <h2 className="text-2xl font-semibold text-secondary mb-4">Alternative Payment Method</h2>
             <p className="text-gray-700 mb-2">Prefer not to use card? You can pay via bank transfer with the details below. Please use your email address as the reference number when making the payment.</p>
@@ -266,9 +261,11 @@ export default function PricingPage() {
               <li><strong>Account Type:</strong> Savings</li>
               <li><strong>Branch Code:</strong> 053252</li>
             </ul>
+            <p className="text-gray-500 text-sm mt-4">
+              Bank transfers are activated manually — allow up to 24 hours for your plan to reflect. Card payments via the buttons above activate instantly.
+            </p>
           </div>
 
-          {/* Subscription & Payment Info */}
           <div className="max-w-3xl mx-auto bg-white rounded-2xl p-6 shadow-sm mb-16">
             <h2 className="text-2xl font-semibold text-secondary mb-4">Subscription & Payment Info</h2>
             <p className="text-gray-700 text-base leading-relaxed">
@@ -279,28 +276,17 @@ export default function PricingPage() {
             </p>
           </div>
 
-          {/* FAQ Section */}
           <div className="max-w-3xl mx-auto bg-white rounded-2xl p-8 shadow-sm">
             <h2 className="text-3xl font-bold text-secondary text-center mb-8">Pricing FAQ</h2>
             <div className="space-y-4">
               {faqs.map((faq, idx) => (
-                <div
-                  key={idx}
-                  className="bg-sage rounded-xl overflow-hidden transition-all"
-                >
+                <div key={idx} className="bg-sage rounded-xl overflow-hidden transition-all">
                   <button
                     onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                     className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-primary-light transition-colors"
                   >
                     <span className="font-semibold text-secondary">{faq.q}</span>
-                    <svg
-                      className={`w-5 h-5 text-primary transition-transform ${
-                        openFaq === idx ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className={`w-5 h-5 text-primary transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
@@ -314,17 +300,12 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* CTA Section */}
           <div className="mt-20 text-center bg-secondary rounded-2xl p-12">
             <h2 className="text-3xl font-bold text-white mb-4">Ready to find your perfect gig worker?</h2>
             <p className="text-gray-200 mb-8 max-w-2xl mx-auto">Join hundreds of South African businesses hiring talented gig seekers on BaseGigs.</p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <a href="/signup" className="px-8 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors shadow-md">
-                Get Started Now
-              </a>
-              <a href="/find-talent" className="px-8 py-4 bg-white text-secondary rounded-xl font-semibold hover:bg-gray-100 transition-colors">
-                Browse Talent
-              </a>
+              <a href="/signup" className="px-8 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors shadow-md">Get Started Now</a>
+              <a href="/find-talent" className="px-8 py-4 bg-white text-secondary rounded-xl font-semibold hover:bg-gray-100 transition-colors">Browse Talent</a>
             </div>
           </div>
         </div>
