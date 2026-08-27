@@ -145,13 +145,13 @@ export default function AdminPage() {
     const gigPostsLeft = gigsAllowed === null ? null : gigsAllowed
 
     await supabase.from('subscriptions').upsert({
-      user_id: userId,
-      plan_name: planKey,
-      gigs_allowed: gigsAllowed,
-      gig_posts_left: gigPostsLeft,
-      activated_at: now.toISOString(),
-      expires_at: expires.toISOString(),
-    })
+  user_id: userId,
+  plan_name: planKey,
+  gigs_allowed: gigsAllowed,
+  gig_posts_left: gigPostsLeft,
+  activated_at: now.toISOString(),
+  expires_at: expires.toISOString(),
+}, { onConflict: 'user_id' })
 
     fetchClients()
   }
