@@ -102,14 +102,20 @@ export async function POST(request: NextRequest) {
   const expires = new Date()
   expires.setDate(now.getDate() + 30)
 
-  const { error: subError } = await supabaseAdmin.from('subscriptions').upsert({
-    user_id: checkoutRow.user_id,
-    plan_name: checkoutRow.plan_key,
-    gigs_allowed: plan.gigsAllowed,
-    gig_posts_left: plan.gigsAllowed,
-    activated_at: now.toISOString(),
-    expires_at: expires.toISOString(),
-  })
+  // onConflict: 'user_id' is the fix — without it, upsert only checks the
+  // table's primary key (id), which is always a fresh UUID, so it would
+  // never find a match and would keep inserting new rows forever.
+  const { error: subError } = await supabaseAdmin.from('subscriptions').upsert(
+    {
+      user_id: checkoutRow.user_id,
+      plan_name: checkoutRow.plan_key,
+      gigs_allowed: plan.gigsAllowed,
+      gig_posts_left: plan.gigsAllowed,
+      activated_at: now.toISOString(),
+      expires_at: expires.toISOString(),
+    },
+    { onConflict: 'user_id' }
+  )
 
   if (subError) {
     console.error('Failed to activate subscription:', subError)
