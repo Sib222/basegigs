@@ -203,6 +203,7 @@ const { data, error } = await supabase
 .select('*')
 .eq('client_id', currentUser.id)
 .eq('status', 'open')
+.is('deleted_at', null)
 .gt('expires_at', new Date().toISOString())
 .order('created_at', { ascending: false })
 
