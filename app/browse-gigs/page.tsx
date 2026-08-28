@@ -118,6 +118,7 @@ const { data, error } = await supabase
 .from('gigs')
 .select('*')
 .eq('status', 'open')
+.is('deleted_at', null)
 .gt('expires_at', new Date().toISOString()) // Only fetch non-expired gigs
 .order('created_at', { ascending: false })
 
